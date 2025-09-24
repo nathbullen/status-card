@@ -3452,6 +3452,10 @@ let O = class extends K {
       .entity-info {
         text-align: center;
         margin-top: 7px;
+        min-height: 2.5em;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
       }
       .entity-name {
         font-size: var(--ha-font-size-m);
@@ -3461,10 +3465,10 @@ let O = class extends K {
         color: var(--primary-text-color);
       }
       .entity-state {
-        font-size: var(--ha-font-size-s);
+        font-size: calc(var(--ha-font-size-s) * 0.9);
         font-weight: var(--ha-font-weight-normal);
         line-height: var(--ha-line-height-condensed);
-        letter-spacing: 0.4px;
+        letter-spacing: 0.2px;
         color: var(--primary-text-color);
       }
       sl-tab {
