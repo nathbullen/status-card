@@ -1032,6 +1032,8 @@ export class StatusCard extends LitElement {
       square: this._config.square,
     });
 
+    const climateIconColor = this._computeIconColorOverride(panel, stateObj);
+
     // Build multi-part state text if requested via customization.state_content
     let stateText: string;
     const contentDef = customization?.state_content;
@@ -1053,10 +1055,17 @@ export class StatusCard extends LitElement {
           if (attr && entity.attributes && attr in entity.attributes) {
             const val: unknown = (entity.attributes as any)[attr];
             if (val === undefined || val === null) return "";
-            const unitForAttr: string | undefined =
+            let unitForAttr: string | undefined;
+            if (/temperature/i.test(attr)) {
+              unitForAttr = (this.hass.config as any)?.unit_system?.temperature;
+            } else if (/humidity/i.test(attr)) {
+              unitForAttr = "%";
+            } else if (
               typeof (entity.attributes as any).unit_of_measurement === "string"
-                ? ((entity.attributes as any).unit_of_measurement as string)
-                : undefined;
+            ) {
+              unitForAttr = (entity.attributes as any)
+                .unit_of_measurement as string;
+            }
             if (typeof val === "number") {
               try {
                 const base = formatNumber(val, this.hass.locale);
@@ -1100,7 +1109,7 @@ export class StatusCard extends LitElement {
                   .stateColor=${true}
                   data-domain=${computeDomain(panel)}
                   data-state=${stateObj.state}
-                  style="${icon_css || ""}"
+                  style="${(icon_css || "") + (climateIconColor ? `;color:${climateIconColor}` : "")}"
                 ></ha-state-icon>`}
           </div>
           <div class="entity-info">
@@ -1114,6 +1123,20 @@ export class StatusCard extends LitElement {
         </div>
       </sl-tab>
     `;
+  }
+
+  private _computeIconColorOverride(
+    entityId: string,
+    stateObj: HassEntity
+  ): string | undefined {
+    const domain = computeDomain(entityId);
+    if (domain !== "climate") return undefined;
+    const hvacAction = (stateObj?.attributes as any)?.hvac_action as
+      | string
+      | undefined;
+    if (hvacAction === "heating") return "var(--state-climate-heat-color)";
+    if (hvacAction === "cooling") return "var(--state-climate-cool-color)";
+    return undefined;
   }
 
   private renderGroupTab(ruleset: any, index: number): TemplateResult {
