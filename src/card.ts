@@ -1066,9 +1066,12 @@ export class StatusCard extends LitElement {
               unitForAttr = (entity.attributes as any)
                 .unit_of_measurement as string;
             }
-            if (typeof val === "number") {
+            const isNumericString =
+              typeof val === "string" && val.trim() !== "" && !Number.isNaN(Number(val));
+            if (typeof val === "number" || isNumericString) {
               try {
-                const base = formatNumber(val, this.hass.locale);
+                const numVal = typeof val === "number" ? val : Number(val);
+                const base = formatNumber(numVal, this.hass.locale);
                 return unitForAttr ? `${base} ${unitForAttr}` : base;
               } catch {
                 return unitForAttr ? `${String(val)} ${unitForAttr}` : String(val);
@@ -1131,11 +1134,18 @@ export class StatusCard extends LitElement {
   ): string | undefined {
     const domain = computeDomain(entityId);
     if (domain !== "climate") return undefined;
+    const customization = this.getCustomizationForType(entityId);
     const hvacAction = (stateObj?.attributes as any)?.hvac_action as
       | string
       | undefined;
-    if (hvacAction === "heating") return "var(--state-climate-heat-color)";
-    if (hvacAction === "cooling") return "var(--state-climate-cool-color)";
+    if (hvacAction === "heating")
+      return (
+        customization?.heat_color || "var(--state-climate-heat-color)"
+      );
+    if (hvacAction === "cooling")
+      return (
+        customization?.cool_color || "var(--state-climate-cool-color)"
+      );
     return undefined;
   }
 
