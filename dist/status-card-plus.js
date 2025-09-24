@@ -3068,16 +3068,16 @@ let O = class extends K {
     return this._computeDeviceClassItems(this._config.content || []);
   }
   _getIconStyles(e, t = {}) {
-    const { color: i, background_color: s, square: o, isNotHome: n } = t, c = ((l) => {
-      if (!l) return;
-      const d = String(l).trim();
-      return d.startsWith("var(") || d.startsWith("#") || d.startsWith("rgb") || d.startsWith("hsl") ? d : `var(--${d}-color)`;
-    })(i), r = {
-      "border-radius": o ? "20%" : "50%",
-      "background-color": s || (c ? `color-mix(in srgb, ${c} 18%, transparent)` : void 0),
-      color: c
+    const { color: i, square: s, isNotHome: o } = t, a = ((r) => {
+      if (!r) return;
+      const l = String(r).trim();
+      return l.startsWith("var(") || l.startsWith("#") || l.startsWith("rgb") || l.startsWith("hsl") ? l : `var(--${l}-color)`;
+    })(i), c = {
+      "border-radius": s ? "20%" : "50%",
+      "background-color": a ? `color-mix(in srgb, ${a} 18%, transparent)` : void 0,
+      color: a
     };
-    return e === "person" && n && (r.filter = "grayscale(100%)"), r;
+    return e === "person" && o && (c.filter = "grayscale(100%)"), c;
   }
   renderExtraTab(e) {
     const { panel: t, entity: i, icon: s, name: o, color: n, icon_css: a, background_color: c } = e, r = this.hass.states[t], l = i.state, d = Number(l), u = !Number.isNaN(d) && l !== "" ? $e(d, this.hass.locale) : N(this.hass, l, I(t)), h = i.attributes.unit_of_measurement, f = this.getCustomizationForType(t), m = this._handleDomainAction(t), y = Tt({
@@ -3091,7 +3091,6 @@ let O = class extends K {
       horizontal: this._config.content_layout === "horizontal"
     }, _ = this._computeIconColorOverride(t, r), A = this._computeStateColorMap(t, r), $ = this._getIconStyles("extra", {
       color: A || _ || n,
-      background_color: c,
       square: this._config.square
     }), g = this._computeStateIconMap(t, r) || s;
     let v;
@@ -3183,27 +3182,28 @@ let O = class extends K {
   renderGroupTab(e, t) {
     const i = Bt(this, e);
     if (!i.length) return b``;
-    const s = e.group_id || `${this.hass.localize("component.group.entity_component._.name")} ${t + 1}`, o = e.group_icon || "mdi:format-list-group", n = this.getCustomColor(s), a = this.getBackgroundColor(s), c = () => {
+    const s = e.group_id || `${this.hass.localize("component.group.entity_component._.name")} ${t + 1}`, o = e.group_icon || "mdi:format-list-group", n = this.getCustomColor(s);
+    this.getBackgroundColor(s);
+    const a = () => {
       this.selectedGroup = t;
-    }, r = Tt({
+    }, c = Tt({
       hasHold: !1,
       hasDoubleClick: !1
-    }), l = {
+    }), r = {
       horizontal: this._config.content_layout === "horizontal"
-    }, d = this._getIconStyles("domain", {
+    }, l = this._getIconStyles("domain", {
       color: n,
-      background_color: a,
       square: this._config.square
     });
     return b`
       <sl-tab
         slot="nav"
         panel=${"group-" + t}
-        @action=${c}
-        .actionHandler=${r}
+        @action=${a}
+        .actionHandler=${c}
       >
-        <div class="entity ${pt(l)}">
-          <div class="entity-icon" style=${X(d)}>
+        <div class="entity ${pt(r)}">
+          <div class="entity-icon" style=${X(l)}>
             <ha-icon icon=${o}></ha-icon>
           </div>
           <div class="entity-info">
@@ -3231,7 +3231,6 @@ let O = class extends K {
       horizontal: this._config.content_layout === "horizontal"
     }, u = this._getIconStyles("domain", {
       color: a,
-      background_color: this.getBackgroundColor(t),
       square: this._config.square
     });
     return b`
@@ -3278,7 +3277,6 @@ let O = class extends K {
       horizontal: this._config.content_layout === "horizontal"
     }, h = this._getIconStyles("deviceClass", {
       color: c,
-      background_color: this.getBackgroundColor(t, i),
       square: this._config.square
     });
     return b`

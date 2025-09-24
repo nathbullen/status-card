@@ -980,12 +980,11 @@ export class StatusCard extends LitElement {
     type: "person" | "extra" | "domain" | "deviceClass",
     options: {
       color?: string;
-      background_color?: string;
       square?: boolean;
       isNotHome?: boolean;
     } = {}
   ) {
-    const { color, background_color, square, isNotHome } = options;
+    const { color, square, isNotHome } = options;
     const resolveColor = (c?: string): string | undefined => {
       if (!c) return undefined;
       const s = String(c).trim();
@@ -995,7 +994,7 @@ export class StatusCard extends LitElement {
     const resolved = resolveColor(color);
     const base: Record<string, string | undefined> = {
       "border-radius": square ? "20%" : "50%",
-      "background-color": background_color || (resolved ? `color-mix(in srgb, ${resolved} 18%, transparent)` : undefined),
+      "background-color": resolved ? `color-mix(in srgb, ${resolved} 18%, transparent)` : undefined,
       color: resolved,
     };
 
@@ -1037,7 +1036,6 @@ export class StatusCard extends LitElement {
     const mappedColor = this._computeStateColorMap(panel, stateObj);
     const iconStyles = this._getIconStyles("extra", {
       color: mappedColor || climateIconColor || color,
-      background_color,
       square: this._config.square,
     });
     const mappedIcon = this._computeStateIconMap(panel, stateObj) || icon;
@@ -1218,7 +1216,6 @@ export class StatusCard extends LitElement {
 
     const iconStyles = this._getIconStyles("domain", {
       color,
-      background_color,
       square: this._config.square,
     });
 
@@ -1274,7 +1271,6 @@ export class StatusCard extends LitElement {
 
     const iconStyles = this._getIconStyles("domain", {
       color,
-      background_color: this.getBackgroundColor(domain),
       square: this._config.square,
     });
 
@@ -1343,7 +1339,6 @@ export class StatusCard extends LitElement {
 
     const iconStyles = this._getIconStyles("deviceClass", {
       color,
-      background_color: this.getBackgroundColor(domain, deviceClass),
       square: this._config.square,
     });
 
