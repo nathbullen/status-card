@@ -25,6 +25,12 @@ export interface CustomizationConfig {
   name?: string;
   icon?: string;
   icon_color?: string;
+  /** Generic state-based color mapping */
+  state_color_map?: Array<{
+    attribute: string; // "state" or an attribute name
+    equals: string | number | boolean;
+    color: string; // css color or var(--...)
+  }>;
   /** Optional explicit color overrides for active climate states */
   heat_color?: string;
   cool_color?: string;

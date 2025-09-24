@@ -1033,6 +1033,7 @@ export class StatusCard extends LitElement {
     });
 
     const climateIconColor = this._computeIconColorOverride(panel, stateObj);
+    const mappedColor = this._computeStateColorMap(panel, stateObj);
 
     // Build multi-part state text if requested via customization.state_content
     let stateText: string;
@@ -1112,7 +1113,7 @@ export class StatusCard extends LitElement {
                   .stateColor=${true}
                   data-domain=${computeDomain(panel)}
                   data-state=${stateObj.state}
-                  style="${(icon_css || "") + (climateIconColor ? `;color:${climateIconColor}` : "")}"
+                  style="${(icon_css || "") + (mappedColor ? `;color:${mappedColor}` : climateIconColor ? `;color:${climateIconColor}` : "" )}"
                 ></ha-state-icon>`}
           </div>
           <div class="entity-info">
@@ -1146,6 +1147,26 @@ export class StatusCard extends LitElement {
       return (
         customization?.cool_color || "var(--state-climate-cool-color)"
       );
+    return undefined;
+  }
+
+  private _computeStateColorMap(
+    entityId: string,
+    stateObj: HassEntity
+  ): string | undefined {
+    const customization = this.getCustomizationForType(entityId);
+    const rules = customization?.state_color_map;
+    if (!Array.isArray(rules) || rules.length === 0) return undefined;
+    for (const rule of rules) {
+      const target = rule.attribute === "state"
+        ? stateObj.state
+        : (stateObj.attributes as any)?.[rule.attribute];
+      if (target === undefined) continue;
+      // Loose compare string/number/bool to string form for YAML entries
+      const normalizedTarget = String(target);
+      const normalizedEquals = String(rule.equals);
+      if (normalizedTarget === normalizedEquals) return rule.color;
+    }
     return undefined;
   }
 
