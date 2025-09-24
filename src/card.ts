@@ -1563,11 +1563,13 @@ export class StatusCard extends LitElement {
         margin-top: 7px;
       }
       .entity-name {
-        font-weight: bold;
+        color: var(--primary-text-color);
+        font-weight: 400;
+        font-size: inherit;
       }
       .entity-state {
-        color: var(--primary-text-color);
-        font-weight: normal;
+        color: var(--secondary-text-color);
+        font-weight: 400;
         font-size: inherit;
       }
       sl-tab {
