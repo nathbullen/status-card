@@ -98,6 +98,12 @@ export class ItemEditor extends LitElement {
       { name: "show_entity_picture", selector: { boolean: {} } },
       { name: "icon", selector: { icon: {} } },
       {
+        name: "state_content",
+        selector: {
+          text: {},
+        },
+      },
+      {
         name: "icon_color",
         selector: { ui_color: { default_color: "state", include_state: true } },
       },
@@ -161,9 +167,22 @@ export class ItemEditor extends LitElement {
     }
     event.stopPropagation();
 
+    const incoming = { ...event.detail.value } as any;
+    if (typeof incoming.state_content === "string") {
+      const trimmed = incoming.state_content.trim();
+      if (trimmed.includes(",")) {
+        incoming.state_content = trimmed
+          .split(",")
+          .map((s: string) => s.trim())
+          .filter((s: string) => s.length > 0);
+      } else if (trimmed.length === 0) {
+        delete incoming.state_content;
+      }
+    }
+
     const updatedConfig: CardConfig = {
       ...this.config,
-      ...event.detail.value,
+      ...incoming,
     };
 
     this._config = updatedConfig;

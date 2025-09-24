@@ -1046,13 +1046,16 @@ export class StatusCard extends LitElement {
           if (str === "state") {
             return displayState + (Number.isNaN(num) ? "" : unit ? ` ${unit}` : "");
           }
-          if (str.startsWith("attribute:")) {
-            const attr = str.slice("attribute:".length);
-            const val: unknown = (entity.attributes as any)?.[attr];
+          // Accept both "attribute:<name>" and bare attribute name (tile-card style)
+          const attr = str.startsWith("attribute:")
+            ? str.slice("attribute:".length)
+            : str;
+          if (attr && entity.attributes && attr in entity.attributes) {
+            const val: unknown = (entity.attributes as any)[attr];
             if (val === undefined || val === null) return "";
             if (typeof val === "number") {
               try {
-                return formatNumber(val, this.hass.locale) + (unit ? ` ${unit}` : "");
+                return formatNumber(val, this.hass.locale);
               } catch {
                 return String(val);
               }
