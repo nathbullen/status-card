@@ -104,6 +104,18 @@ export class ItemEditor extends LitElement {
         },
       },
       {
+        name: "state_color_map",
+        selector: {
+          object: {},
+        },
+      },
+      {
+        name: "state_icon_map",
+        selector: {
+          object: {},
+        },
+      },
+      {
         name: "icon_color",
         selector: { ui_color: { default_color: "state", include_state: true } },
       },
@@ -116,19 +128,6 @@ export class ItemEditor extends LitElement {
       { name: "tap_action", selector: { ui_action: { actions } } },
       { name: "double_tap_action", selector: { ui_action: { actions } } },
       { name: "hold_action", selector: { ui_action: { actions } } },
-      {
-        name: "state_color_map",
-        selector: {
-          object:
-            {},
-        },
-      },
-      {
-        name: "state_icon_map",
-        selector: {
-          object: {},
-        },
-      },
     ];
   });
 

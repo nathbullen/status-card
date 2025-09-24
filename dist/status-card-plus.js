@@ -3791,6 +3791,18 @@ let J = class extends K {
           }
         },
         {
+          name: "state_color_map",
+          selector: {
+            object: {}
+          }
+        },
+        {
+          name: "state_icon_map",
+          selector: {
+            object: {}
+          }
+        },
+        {
           name: "icon_color",
           selector: { ui_color: { default_color: "state", include_state: !0 } }
         },
@@ -3802,19 +3814,7 @@ let J = class extends K {
         },
         { name: "tap_action", selector: { ui_action: { actions: e } } },
         { name: "double_tap_action", selector: { ui_action: { actions: e } } },
-        { name: "hold_action", selector: { ui_action: { actions: e } } },
-        {
-          name: "state_color_map",
-          selector: {
-            object: {}
-          }
-        },
-        {
-          name: "state_icon_map",
-          selector: {
-            object: {}
-          }
-        }
+        { name: "hold_action", selector: { ui_action: { actions: e } } }
       ];
     });
   }
