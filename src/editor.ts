@@ -896,7 +896,7 @@ export class StatusCardEditor extends LitElement {
           <span slot="title">${localizedType}</span>
         </div>
       </div>
-      <status-item-editor
+      <status-card-plus-item-editor
         .hass=${this.hass}
         .lovelace=${this.lovelace}
         .config=${this._config?.customization?.[editor?.index ?? 0] ?? {}}
@@ -904,7 +904,7 @@ export class StatusCardEditor extends LitElement {
         .index=${editor?.index ?? 0}
         @config-changed=${itemChangedHandler}
       >
-      </status-item-editor>
+      </status-card-plus-item-editor>
     `;
   }
 

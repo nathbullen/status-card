@@ -5,7 +5,7 @@ import { CardConfig, CustomizationConfig, UiAction } from "./helpers";
 import memoizeOne from "memoize-one";
 import { computeLabelCallback } from "./translations";
 
-@customElement("status-item-editor")
+@customElement("status-card-plus-item-editor")
 export class ItemEditor extends LitElement {
   @property({ attribute: false }) config?: CustomizationConfig;
   @property({ attribute: false }) hass?: HomeAssistant;

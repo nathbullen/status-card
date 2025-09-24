@@ -1042,7 +1042,7 @@ export class StatusCard extends LitElement {
       )
         .map((token) => {
           if (!token) return "";
-          const str = String(token);
+          const str = String(token).trim();
           if (str === "state") {
             return displayState + (Number.isNaN(num) ? "" : unit ? ` ${unit}` : "");
           }
@@ -1053,14 +1053,24 @@ export class StatusCard extends LitElement {
           if (attr && entity.attributes && attr in entity.attributes) {
             const val: unknown = (entity.attributes as any)[attr];
             if (val === undefined || val === null) return "";
+            const unitForAttr: string | undefined =
+              typeof (entity.attributes as any).unit_of_measurement === "string"
+                ? ((entity.attributes as any).unit_of_measurement as string)
+                : undefined;
             if (typeof val === "number") {
               try {
-                return formatNumber(val, this.hass.locale);
+                const base = formatNumber(val, this.hass.locale);
+                return unitForAttr ? `${base} ${unitForAttr}` : base;
               } catch {
-                return String(val);
+                return unitForAttr ? `${String(val)} ${unitForAttr}` : String(val);
               }
             }
-            return translateEntityState(this.hass, String(val), computeDomain(panel));
+            const localized = translateEntityState(
+              this.hass,
+              String(val),
+              computeDomain(panel)
+            );
+            return localized;
           }
           // Fallback: literal text token
           return str;
