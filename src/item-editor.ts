@@ -104,18 +104,6 @@ export class ItemEditor extends LitElement {
         },
       },
       {
-        name: "heat_color",
-        selector: {
-          ui_color: { default_color: "state", include_state: true },
-        },
-      },
-      {
-        name: "cool_color",
-        selector: {
-          ui_color: { default_color: "state", include_state: true },
-        },
-      },
-      {
         name: "icon_color",
         selector: { ui_color: { default_color: "state", include_state: true } },
       },

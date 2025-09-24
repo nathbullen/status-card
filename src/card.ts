@@ -1135,18 +1135,11 @@ export class StatusCard extends LitElement {
   ): string | undefined {
     const domain = computeDomain(entityId);
     if (domain !== "climate") return undefined;
-    const customization = this.getCustomizationForType(entityId);
     const hvacAction = (stateObj?.attributes as any)?.hvac_action as
       | string
       | undefined;
-    if (hvacAction === "heating")
-      return (
-        customization?.heat_color || "var(--state-climate-heat-color)"
-      );
-    if (hvacAction === "cooling")
-      return (
-        customization?.cool_color || "var(--state-climate-cool-color)"
-      );
+    if (hvacAction === "heating") return "var(--state-climate-heat-color)";
+    if (hvacAction === "cooling") return "var(--state-climate-cool-color)";
     return undefined;
   }
 

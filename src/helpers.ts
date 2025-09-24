@@ -31,9 +31,6 @@ export interface CustomizationConfig {
     equals: string | number | boolean;
     color: string; // css color or var(--...)
   }>;
-  /** Optional explicit color overrides for active climate states */
-  heat_color?: string;
-  cool_color?: string;
   state?: string;
   state_not?: string;
   invert_state?: "true" | "false";
