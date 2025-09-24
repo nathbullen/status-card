@@ -36,6 +36,16 @@ export interface CustomizationConfig {
   show_total_entities?: boolean;
   show_total_number?: boolean;
   show_entity_picture?: boolean;
+  /**
+   * Configure what to render as the textual state for an item.
+   * - string: one of "state" or "attribute:<attr_name>"
+   * - array: multiple entries will be joined with " · " like tile-card
+   *
+   * Examples:
+   *  - "state"
+   *  - ["state", "attribute:hvac_action", "attribute:temperature"]
+   */
+  state_content?: string | Array<string>;
   card?: any;
 }
 
@@ -711,15 +721,15 @@ class ActionHandler extends HTMLElement implements ActionHandlerType {
   }
 }
 
-customElements.define("action-handler-status-card", ActionHandler);
+customElements.define("action-handler-status-card-plus", ActionHandler);
 
 const getActionHandler = (): ActionHandler => {
   const body = document.body;
-  if (body.querySelector("action-handler-status-card")) {
-    return body.querySelector("action-handler-status-card") as ActionHandler;
+  if (body.querySelector("action-handler-status-card-plus")) {
+    return body.querySelector("action-handler-status-card-plus") as ActionHandler;
   }
 
-  const actionhandler = document.createElement("action-handler-status-card");
+  const actionhandler = document.createElement("action-handler-status-card-plus");
   body.appendChild(actionhandler);
 
   return actionhandler as ActionHandler;

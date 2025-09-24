@@ -193,6 +193,37 @@ Comparisons such as <, <=, > and => also work. For example, entering <10 in the 
 - **Icon Background Color** - Change the background color of the individual icon. Default is an rgba value so it has some opactiy.
 - **Tap, Double Tap & Hold Behavior** - specify which action will happen for individual domain or device_class
 
+#### Extra entities multi-state text
+
+You can control what appears under the icon for items defined in `extra_entities` using `state_content` in `customization` for that entity. Accepts a string or an array of strings:
+
+- `state` – the localized state (and unit if numeric)
+- `attribute:<name>` – show an attribute value, e.g. `attribute:temperature`
+- Any other string renders literally
+
+When you pass an array, parts are joined with ` · ` similar to Home Assistant's Tile Card multi-state.
+
+Example:
+
+```yaml
+type: custom:status-card-plus
+extra_entities:
+  - climate.living_room
+content:
+  - climate.living_room
+customization:
+  - type: climate.living_room
+    state_content:
+      - state
+      - attribute:temperature
+```
+
+This renders: `Heat · 18 °C` beneath the icon.
+
+#### Automatic icon color for extra entities
+
+For extra entities rendered with `ha-state-icon`, the icon now uses Home Assistant's state-based coloring (same as Tile Card). You can still override with `icon_color` in `customization`. If an explicit `icon_color` is set, that takes precedence.
+
 <p align="right">
   <a href="#top">
     <img src="https://github.com/xBourner/status-card/blob/main/.github/img/top.png" alt="Back to Top" width="4%">
@@ -206,7 +237,7 @@ Comparisons such as <, <=, > and => also work. For example, entering <10 in the 
 All settings are optional. The card should work without setting any parameters in yaml or via GUI. 
 
 ```yaml
-type: custom:dev-status-card
+type: custom:status-card-plus
 hide_person: false  # hide person entities in card
 list_mode: false  # enable buk mode for accessing entities as text you can copy (easy to add hidden_entities)
 hide_content_name: false  # hide names for domains/device classes/exta entities

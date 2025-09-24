@@ -38,7 +38,7 @@ import {
 } from "custom-card-helpers";
 import { filterEntitiesByRuleset } from "./smart_groups";
 
-@customElement("status-card")
+@customElement("status-card-plus")
 export class StatusCard extends LitElement {
   @property({ attribute: false }) public hass!: HomeAssistant;
   @property({ type: Object }) public _config!: CardConfig;
@@ -334,7 +334,7 @@ export class StatusCard extends LitElement {
         : this._isOn(domain, deviceClass);
     }
 
-    const dialogTag = "status-card-popup";
+    const dialogTag = "status-card-plus-popup";
     this._showPopup(this, dialogTag, {
       title,
       hass: this.hass,
@@ -1032,6 +1032,42 @@ export class StatusCard extends LitElement {
       square: this._config.square,
     });
 
+    // Build multi-part state text if requested via customization.state_content
+    let stateText: string;
+    const contentDef = customization?.state_content;
+    if (contentDef !== undefined) {
+      const parts = (Array.isArray(contentDef)
+        ? contentDef
+        : [contentDef]
+      )
+        .map((token) => {
+          if (!token) return "";
+          const str = String(token);
+          if (str === "state") {
+            return displayState + (Number.isNaN(num) ? "" : unit ? ` ${unit}` : "");
+          }
+          if (str.startsWith("attribute:")) {
+            const attr = str.slice("attribute:".length);
+            const val: unknown = (entity.attributes as any)?.[attr];
+            if (val === undefined || val === null) return "";
+            if (typeof val === "number") {
+              try {
+                return formatNumber(val, this.hass.locale) + (unit ? ` ${unit}` : "");
+              } catch {
+                return String(val);
+              }
+            }
+            return translateEntityState(this.hass, String(val), computeDomain(panel));
+          }
+          // Fallback: literal text token
+          return str;
+        })
+        .filter((p) => p !== "");
+      stateText = parts.join(" · ");
+    } else {
+      stateText = `${displayState}${unit ? ` ${unit}` : ""}`;
+    }
+
     return html`
       <sl-tab slot="nav" panel=${panel} @action=${handler} .actionHandler=${ah}>
         <div class="extra-entity ${classMap(contentClasses)}">
@@ -1048,6 +1084,7 @@ export class StatusCard extends LitElement {
                   .hass=${this.hass}
                   .stateObj=${stateObj}
                   .icon=${icon}
+                  .stateColor=${true}
                   data-domain=${computeDomain(panel)}
                   data-state=${stateObj.state}
                   style="${icon_css || ""}"
@@ -1058,7 +1095,7 @@ export class StatusCard extends LitElement {
               ? html`<div class="entity-name">${name}</div>`
               : ""}
             <div class="entity-state">
-              ${displayState}${unit ? ` ${unit}` : ""}
+              ${stateText}
             </div>
           </div>
         </div>
@@ -1475,7 +1512,7 @@ export class StatusCard extends LitElement {
   }
 
   static getConfigElement() {
-    return document.createElement("status-card-editor");
+    return document.createElement("status-card-plus-editor");
   }
 
   static getStubConfig() {

@@ -33,7 +33,7 @@ import {
 import "./items-editor";
 import "./item-editor";
 
-@customElement("status-card-editor")
+@customElement("status-card-plus-editor")
 export class StatusCardEditor extends LitElement {
   @property({ attribute: false }) public hass!: HomeAssistant;
   @property({ attribute: false }) public lovelace?: any;
