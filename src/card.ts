@@ -1034,6 +1034,7 @@ export class StatusCard extends LitElement {
 
     const climateIconColor = this._computeIconColorOverride(panel, stateObj);
     const mappedColor = this._computeStateColorMap(panel, stateObj);
+    const mappedIcon = this._computeStateIconMap(panel, stateObj) || icon;
 
     // Build multi-part state text if requested via customization.state_content
     let stateText: string;
@@ -1098,9 +1099,9 @@ export class StatusCard extends LitElement {
       <sl-tab slot="nav" panel=${panel} @action=${handler} .actionHandler=${ah}>
         <div class="extra-entity ${classMap(contentClasses)}">
           <div class="entity-icon" style=${styleMap(iconStyles)}>
-            ${icon.startsWith("/") || icon.startsWith("http")
+            ${(mappedIcon || "").startsWith("/") || (mappedIcon || "").startsWith("http")
               ? html`<img
-                  src=${icon}
+                  src=${mappedIcon}
                   alt=${name}
                   style="border-radius:${this._config.square
                     ? "20%"
@@ -1109,7 +1110,7 @@ export class StatusCard extends LitElement {
               : html`<ha-state-icon
                   .hass=${this.hass}
                   .stateObj=${stateObj}
-                  .icon=${icon}
+                  .icon=${mappedIcon}
                   .stateColor=${true}
                   data-domain=${computeDomain(panel)}
                   data-state=${stateObj.state}
@@ -1159,6 +1160,25 @@ export class StatusCard extends LitElement {
       const normalizedTarget = String(target);
       const normalizedEquals = String(rule.equals);
       if (normalizedTarget === normalizedEquals) return rule.color;
+    }
+    return undefined;
+  }
+
+  private _computeStateIconMap(
+    entityId: string,
+    stateObj: HassEntity
+  ): string | undefined {
+    const customization = this.getCustomizationForType(entityId);
+    const rules = customization?.state_icon_map;
+    if (!Array.isArray(rules) || rules.length === 0) return undefined;
+    for (const rule of rules) {
+      const target = rule.attribute === "state"
+        ? stateObj.state
+        : (stateObj.attributes as any)?.[rule.attribute];
+      if (target === undefined) continue;
+      const normalizedTarget = String(target);
+      const normalizedEquals = String(rule.equals);
+      if (normalizedTarget === normalizedEquals) return rule.icon;
     }
     return undefined;
   }

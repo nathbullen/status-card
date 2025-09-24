@@ -189,6 +189,8 @@ export function computeLabelCallback(
       return "State content";
     case "state_color_map":
       return "State color map";
+    case "state_icon_map":
+      return "State icon map";
     case "group_id":
       return (
         hass!.localize("component.group.entity_component._.name") +

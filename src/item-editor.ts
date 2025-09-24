@@ -123,6 +123,12 @@ export class ItemEditor extends LitElement {
             {},
         },
       },
+      {
+        name: "state_icon_map",
+        selector: {
+          object: {},
+        },
+      },
     ];
   });
 

@@ -31,6 +31,12 @@ export interface CustomizationConfig {
     equals: string | number | boolean;
     color: string; // css color or var(--...)
   }>;
+  /** Generic state-based icon mapping */
+  state_icon_map?: Array<{
+    attribute: string; // "state" or an attribute name
+    equals: string | number | boolean;
+    icon: string; // mdi:..., hass icon, or image URL
+  }>;
   state?: string;
   state_not?: string;
   invert_state?: "true" | "false";
