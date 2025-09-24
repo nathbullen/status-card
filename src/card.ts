@@ -1565,8 +1565,9 @@ export class StatusCard extends LitElement {
         font-weight: bold;
       }
       .entity-state {
-        color: var(--secondary-text-color);
-        font-size: 0.9em;
+        color: var(--primary-text-color);
+        font-weight: normal;
+        font-size: inherit;
       }
       sl-tab {
         pointer-events: auto;
