@@ -48,7 +48,7 @@ const Ue = (e) => new ke(typeof e == "string" ? e : e + "", void 0, te), bt = (e
  * Copyright 2017 Google LLC
  * SPDX-License-Identifier: BSD-3-Clause
  */
-const { is: Ve, defineProperty: qe, getOwnPropertyDescriptor: Ge, getOwnPropertyNames: We, getOwnPropertySymbols: Ke, getPrototypeOf: Ze } = Object, et = globalThis, le = et.trustedTypes, Je = le ? le.emptyScript : "", qt = et.reactiveElementPolyfillSupport, Et = (e, t) => e, Mt = { toAttribute(e, t) {
+const { is: Ve, defineProperty: qe, getOwnPropertyDescriptor: We, getOwnPropertyNames: Ge, getOwnPropertySymbols: Ke, getPrototypeOf: Ze } = Object, et = globalThis, le = et.trustedTypes, Je = le ? le.emptyScript : "", qt = et.reactiveElementPolyfillSupport, Et = (e, t) => e, Mt = { toAttribute(e, t) {
   switch (t) {
     case Boolean:
       e = e ? Je : null;
@@ -92,7 +92,7 @@ let gt = class extends HTMLElement {
     }
   }
   static getPropertyDescriptor(t, i, s) {
-    const { get: o, set: n } = Ge(this.prototype, t) ?? { get() {
+    const { get: o, set: n } = We(this.prototype, t) ?? { get() {
       return this[i];
     }, set(a) {
       this[i] = a;
@@ -113,7 +113,7 @@ let gt = class extends HTMLElement {
   static finalize() {
     if (this.hasOwnProperty(Et("finalized"))) return;
     if (this.finalized = !0, this._$Ei(), this.hasOwnProperty(Et("properties"))) {
-      const i = this.properties, s = [...We(i), ...Ke(i)];
+      const i = this.properties, s = [...Ge(i), ...Ke(i)];
       for (const o of s) this.createProperty(o, i[o]);
     }
     const t = this[Symbol.metadata];
@@ -287,9 +287,9 @@ gt.elementStyles = [], gt.shadowRootOptions = { mode: "open" }, gt[Et("elementPr
  * Copyright 2017 Google LLC
  * SPDX-License-Identifier: BSD-3-Clause
  */
-const Ct = globalThis, Ht = Ct.trustedTypes, ue = Ht ? Ht.createPolicy("lit-html", { createHTML: (e) => e }) : void 0, De = "$lit$", Q = `lit$${Math.random().toFixed(9).slice(2)}$`, Te = "?" + Q, Xe = `<${Te}>`, ut = document, St = () => ut.createComment(""), xt = (e) => e === null || typeof e != "object" && typeof e != "function", ie = Array.isArray, Ye = (e) => ie(e) || typeof (e == null ? void 0 : e[Symbol.iterator]) == "function", Gt = `[ 	
-\f\r]`, wt = /<(?:(!--|\/[^a-zA-Z])|(\/?[a-zA-Z][^>\s]*)|(\/?$))/g, he = /-->/g, me = />/g, nt = RegExp(`>|${Gt}(?:([^\\s"'>=/]+)(${Gt}*=${Gt}*(?:[^ 	
-\f\r"'\`<>=]|("|')|))|$)`, "g"), pe = /'/g, fe = /"/g, Oe = /^(?:script|style|textarea|title)$/i, Qe = (e) => (t, ...i) => ({ _$litType$: e, strings: t, values: i }), $ = Qe(1), Z = Symbol.for("lit-noChange"), T = Symbol.for("lit-nothing"), _e = /* @__PURE__ */ new WeakMap(), rt = ut.createTreeWalker(ut, 129);
+const Ct = globalThis, Ht = Ct.trustedTypes, ue = Ht ? Ht.createPolicy("lit-html", { createHTML: (e) => e }) : void 0, De = "$lit$", Q = `lit$${Math.random().toFixed(9).slice(2)}$`, Te = "?" + Q, Xe = `<${Te}>`, ut = document, St = () => ut.createComment(""), xt = (e) => e === null || typeof e != "object" && typeof e != "function", ie = Array.isArray, Ye = (e) => ie(e) || typeof (e == null ? void 0 : e[Symbol.iterator]) == "function", Wt = `[ 	
+\f\r]`, wt = /<(?:(!--|\/[^a-zA-Z])|(\/?[a-zA-Z][^>\s]*)|(\/?$))/g, he = /-->/g, me = />/g, nt = RegExp(`>|${Wt}(?:([^\\s"'>=/]+)(${Wt}*=${Wt}*(?:[^ 	
+\f\r"'\`<>=]|("|')|))|$)`, "g"), pe = /'/g, fe = /"/g, Oe = /^(?:script|style|textarea|title)$/i, Qe = (e) => (t, ...i) => ({ _$litType$: e, strings: t, values: i }), b = Qe(1), Z = Symbol.for("lit-noChange"), T = Symbol.for("lit-nothing"), _e = /* @__PURE__ */ new WeakMap(), rt = ut.createTreeWalker(ut, 129);
 function Le(e, t) {
   if (!ie(e) || !e.hasOwnProperty("raw")) throw Error("invalid template strings array");
   return ue !== void 0 ? ue.createHTML(t) : t;
@@ -507,8 +507,8 @@ class ni {
     vt(this, t);
   }
 }
-const ai = { I: $t }, Wt = Ct.litHtmlPolyfillSupport;
-Wt == null || Wt(zt, $t), (Ct.litHtmlVersions ?? (Ct.litHtmlVersions = [])).push("3.3.1");
+const ai = { I: $t }, Gt = Ct.litHtmlPolyfillSupport;
+Gt == null || Gt(zt, $t), (Ct.litHtmlVersions ?? (Ct.litHtmlVersions = [])).push("3.3.1");
 const ri = (e, t, i) => {
   const s = (i == null ? void 0 : i.renderBefore) ?? t;
   let o = s._$litPart$;
@@ -1369,25 +1369,25 @@ const Hi = () => {
   e.__themes.cacheKey = c || null, e.__themes.keys = d;
 };
 function Ie(e, t, i, s, o, n) {
-  const a = o.area && o.area.length ? o.area : null, c = o.floor && o.floor.length ? o.floor : null, r = o.label && o.label.length ? o.label : null, l = o.hiddenAreas || [], d = o.hiddenLabels || [], u = o.hiddenEntities || [], h = new Set(l), f = new Set(d), m = new Set(u), y = new Map(t.map((b) => [b.id, b])), p = new Map(
-    i.map((b) => [b.area_id, b.floor_id])
-  ), _ = e.filter((b) => {
+  const a = o.area && o.area.length ? o.area : null, c = o.floor && o.floor.length ? o.floor : null, r = o.label && o.label.length ? o.label : null, l = o.hiddenAreas || [], d = o.hiddenLabels || [], u = o.hiddenEntities || [], h = new Set(l), f = new Set(d), m = new Set(u), y = new Map(t.map(($) => [$.id, $])), p = new Map(
+    i.map(($) => [$.area_id, $.floor_id])
+  ), _ = e.filter(($) => {
     var k, S, x;
-    const g = b.entity_id.split(".")[0];
+    const g = $.entity_id.split(".")[0];
     if (!n.includes(g)) return !1;
     if (g === "update")
-      return !b.hidden_by && !b.disabled_by;
-    const v = b.device_id ? y.get(b.device_id) : void 0;
-    if (!(b.area_id != null || v && v.area_id != null) || r && !((((k = b.labels) == null ? void 0 : k.some((R) => r.includes(R))) ?? !1) || (((S = v == null ? void 0 : v.labels) == null ? void 0 : S.some((R) => r.includes(R))) ?? !1)) || a && !(b.area_id !== void 0 && a.includes(b.area_id) || v && v.area_id !== void 0 && a.includes(v.area_id)))
+      return !$.hidden_by && !$.disabled_by;
+    const v = $.device_id ? y.get($.device_id) : void 0;
+    if (!($.area_id != null || v && v.area_id != null) || r && !((((k = $.labels) == null ? void 0 : k.some((R) => r.includes(R))) ?? !1) || (((S = v == null ? void 0 : v.labels) == null ? void 0 : S.some((R) => r.includes(R))) ?? !1)) || a && !($.area_id !== void 0 && a.includes($.area_id) || v && v.area_id !== void 0 && a.includes(v.area_id)))
       return !1;
     if (c) {
-      const L = b.area_id ? p.get(b.area_id) : void 0, R = v != null && v.area_id ? p.get(v.area_id) : void 0;
+      const L = $.area_id ? p.get($.area_id) : void 0, R = v != null && v.area_id ? p.get(v.area_id) : void 0;
       if (!(L && c.includes(L) || R && c.includes(R))) return !1;
     }
-    return h.size && (b.area_id && h.has(b.area_id) || v && v.area_id && h.has(v.area_id)) || (x = b.labels) != null && x.some((L) => f.has(L)) || m.has(b.entity_id) ? !1 : !b.hidden_by && !b.disabled_by;
-  }).map((b) => b.entity_id), A = {};
-  for (const b of _) {
-    const g = b.split(".")[0], v = s[b];
+    return h.size && ($.area_id && h.has($.area_id) || v && v.area_id && h.has(v.area_id)) || (x = $.labels) != null && x.some((L) => f.has(L)) || m.has($.entity_id) ? !1 : !$.hidden_by && !$.disabled_by;
+  }).map(($) => $.entity_id), A = {};
+  for (const $ of _) {
+    const g = $.split(".")[0], v = s[$];
     v && (A[g] || (A[g] = [])).push(v);
   }
   return A;
@@ -2024,7 +2024,7 @@ const q = (dt = class extends K {
     const i = this.card, s = I(t.entity_id), o = this.selectedDomain || s, n = this.selectedDomain ? this.selectedDeviceClass : (A = (_ = (p = (y = this.hass) == null ? void 0 : y.states) == null ? void 0 : p[t.entity_id]) == null ? void 0 : _.attributes) == null ? void 0 : A.device_class, a = j(o, n), c = typeof (i == null ? void 0 : i.getCustomizationForType) == "function" ? i.getCustomizationForType(a) : void 0, r = c == null ? void 0 : c.popup_card, l = r && typeof r.type == "string" && r.type || "tile", d = l === "tile" ? this.DOMAIN_FEATURES[s] ?? {} : {};
     let u = {};
     if (r && typeof r == "object") {
-      const { type: b, entity: g, ...v } = r;
+      const { type: $, entity: g, ...v } = r;
       u = v;
     } else
       u = {};
@@ -2146,8 +2146,8 @@ const q = (dt = class extends K {
     );
   }
   render() {
-    var g, v, U, k, S, x, L, R, mt, H, G, kt;
-    if (!this.open) return $``;
+    var g, v, U, k, S, x, L, R, mt, H, W, kt;
+    if (!this.open) return b``;
     const t = (g = this.card) != null && g.list_mode ? 1 : ((U = (v = this.card) == null ? void 0 : v._config) == null ? void 0 : U.columns) || 4, i = this.selectedDomain, s = this.selectedDeviceClass, o = this.selectedGroup, n = this.card, c = (typeof (n == null ? void 0 : n._shouldShowTotalEntities) == "function" ? n._shouldShowTotalEntities(i, s) : !1) ? !0 : this._showAll, r = new Map(
       (k = n.areas) == null ? void 0 : k.map((w) => [w.area_id, w.name])
     );
@@ -2167,8 +2167,8 @@ const q = (dt = class extends K {
       l,
       r,
       this.sortEntitiesForPopup.bind(this)
-    ), m = ((R = n == null ? void 0 : n._config) == null ? void 0 : R.ungroupAreas) === !0 || ((mt = n == null ? void 0 : n._config) == null ? void 0 : mt.ungroup_areas) === !0 || ((H = n == null ? void 0 : n._config) == null ? void 0 : H.area_grouping) !== void 0 && ((G = n == null ? void 0 : n._config) == null ? void 0 : G.area_grouping) === !1, y = f.length ? Math.max(...f.map(([, w]) => w.length)) : 0, p = m ? Math.min(t, Math.max(1, l.length)) : Math.min(t, Math.max(1, y)), _ = j(i, s), A = typeof (n == null ? void 0 : n.getCustomizationForType) == "function" ? n.getCustomizationForType(_) : void 0, b = (A == null ? void 0 : A.invert) === !0;
-    return $`
+    ), m = ((R = n == null ? void 0 : n._config) == null ? void 0 : R.ungroupAreas) === !0 || ((mt = n == null ? void 0 : n._config) == null ? void 0 : mt.ungroup_areas) === !0 || ((H = n == null ? void 0 : n._config) == null ? void 0 : H.area_grouping) !== void 0 && ((W = n == null ? void 0 : n._config) == null ? void 0 : W.area_grouping) === !1, y = f.length ? Math.max(...f.map(([, w]) => w.length)) : 0, p = m ? Math.min(t, Math.max(1, l.length)) : Math.min(t, Math.max(1, y)), _ = j(i, s), A = typeof (n == null ? void 0 : n.getCustomizationForType) == "function" ? n.getCustomizationForType(_) : void 0, $ = (A == null ? void 0 : A.invert) === !0;
+    return b`
       <ha-dialog
         .open=${this.open}
         hideActions
@@ -2187,9 +2187,9 @@ const q = (dt = class extends K {
           ></ha-icon-button>
           <h3>
             ${(() => {
-      var V, W;
+      var V, G;
       const w = this.selectedGroup, F = this.card;
-      if (w !== void 0 && ((W = (V = F == null ? void 0 : F._config) == null ? void 0 : V.content) != null && W[w])) {
+      if (w !== void 0 && ((G = (V = F == null ? void 0 : F._config) == null ? void 0 : V.content) != null && G[w])) {
         const Ne = F._config.content[w];
         return this.hass.localize(
           "ui.panel.lovelace.editor.card.entities.name"
@@ -2206,7 +2206,7 @@ const q = (dt = class extends K {
     })()}
           </h3>
 
-          ${d ? $`
+          ${d ? b`
                 <ha-button-menu
                   class="menu-button"
                   slot="actionItems"
@@ -2226,7 +2226,7 @@ const q = (dt = class extends K {
                     @click=${this.handleAskToggleDomain}
                     @closed=${this._stopPropagation}
                   >
-                    ${b ? this.hass.localize("ui.card.common.turn_on") : this.hass.localize("ui.card.common.turn_off")}
+                    ${$ ? this.hass.localize("ui.card.common.turn_on") : this.hass.localize("ui.card.common.turn_off")}
                     <ha-svg-icon
                       slot="graphic"
                       .path=${Di}
@@ -2252,30 +2252,30 @@ const q = (dt = class extends K {
               ` : ""}
         </div>
         <div class="dialog-content">
-          ${(kt = this.card) != null && kt.list_mode ? m ? $`
+          ${(kt = this.card) != null && kt.list_mode ? m ? b`
                   <ul class="entity-list">
                     ${tt(
       u,
       (w) => w.entity_id,
-      (w) => $`<li class="entity-item">- ${w.entity_id}</li>`
+      (w) => b`<li class="entity-item">- ${w.entity_id}</li>`
     )}
                   </ul>
-                ` : $`
+                ` : b`
                   <ul class="entity-list">
                     ${tt(
       f,
       ([w]) => w,
       ([w, F]) => {
         const V = r.get(w) ?? (w === "unassigned" ? "Unassigned" : w);
-        return $`
+        return b`
                           <li class="entity-item">
                             <h4>${V}:</h4>
                             <ul>
                               ${tt(
           F,
-          (W) => W.entity_id,
-          (W) => $`<li class="entity-item">
-                                    - ${W.entity_id}
+          (G) => G.entity_id,
+          (G) => b`<li class="entity-item">
+                                    - ${G.entity_id}
                                   </li>`
         )}
                             </ul>
@@ -2284,30 +2284,30 @@ const q = (dt = class extends K {
       }
     )}
                   </ul>
-                ` : m ? $`
+                ` : m ? b`
                 <div class="entity-cards">
                   ${tt(
       u,
       (w) => w.entity_id,
-      (w) => $`
+      (w) => b`
                       <div class="entity-card">
                         ${this._getOrCreateCard(w)}
                       </div>
                     `
     )}
                 </div>
-              ` : $`${f.map(([w, F]) => {
+              ` : b`${f.map(([w, F]) => {
       const V = r.get(w) ?? (w === "unassigned" ? "Unassigned" : w);
-      return $`
+      return b`
                   <div class="cards-wrapper">
                     <h4>${V}</h4>
                     <div class="entity-cards">
                       ${tt(
         F,
-        (W) => W.entity_id,
-        (W) => $`
+        (G) => G.entity_id,
+        (G) => b`
                           <div class="entity-card">
-                            ${this._getOrCreateCard(W)}
+                            ${this._getOrCreateCard(G)}
                           </div>
                         `
       )}
@@ -2487,9 +2487,9 @@ const ae = class ae extends K {
   }
   render() {
     var a, c;
-    if (!this.open || !this.hass || !this.card) return $``;
+    if (!this.open || !this.hass || !this.card) return b``;
     const t = this.selectedDomain || "", i = this.selectedDeviceClass, s = j(t, i), o = (c = (a = this.card) == null ? void 0 : a.getCustomizationForType) == null ? void 0 : c.call(a, s), n = (o == null ? void 0 : o.invert) === !0;
-    return $`
+    return b`
       <ha-dialog
         .open=${this.open}
         heading="${n ? this.hass.localize("ui.card.common.turn_on") + "?" : this.hass.localize("ui.card.common.turn_off") + "?"}"
@@ -2542,10 +2542,10 @@ customElements.define(
   "status-card-plus-popup-confirmation",
   it
 );
-var Gi = Object.defineProperty, Wi = Object.getOwnPropertyDescriptor, M = (e, t, i, s) => {
-  for (var o = s > 1 ? void 0 : s ? Wi(t, i) : t, n = e.length - 1, a; n >= 0; n--)
+var Wi = Object.defineProperty, Gi = Object.getOwnPropertyDescriptor, M = (e, t, i, s) => {
+  for (var o = s > 1 ? void 0 : s ? Gi(t, i) : t, n = e.length - 1, a; n >= 0; n--)
     (a = e[n]) && (o = (s ? a(t, i, o) : a(o)) || o);
-  return s && o && Gi(t, i, o), o;
+  return s && o && Wi(t, i, o), o;
 };
 let O = class extends K {
   constructor() {
@@ -3068,12 +3068,16 @@ let O = class extends K {
     return this._computeDeviceClassItems(this._config.content || []);
   }
   _getIconStyles(e, t = {}) {
-    const { color: i, background_color: s, square: o, isNotHome: n } = t, a = {
+    const { color: i, background_color: s, square: o, isNotHome: n } = t, c = ((l) => {
+      if (!l) return;
+      const d = String(l).trim();
+      return d.startsWith("var(") || d.startsWith("#") || d.startsWith("rgb") || d.startsWith("hsl") ? d : `var(--${d}-color)`;
+    })(i), r = {
       "border-radius": o ? "20%" : "50%",
-      "background-color": s,
-      color: i ? `var(--${i}-color)` : void 0
+      "background-color": s || (c ? `color-mix(in srgb, ${c} 18%, transparent)` : void 0),
+      color: c
     };
-    return e === "person" && n && (a.filter = "grayscale(100%)"), a;
+    return e === "person" && n && (r.filter = "grayscale(100%)"), r;
   }
   renderExtraTab(e) {
     const { panel: t, entity: i, icon: s, name: o, color: n, icon_css: a, background_color: c } = e, r = this.hass.states[t], l = i.state, d = Number(l), u = !Number.isNaN(d) && l !== "" ? $e(d, this.hass.locale) : N(this.hass, l, I(t)), h = i.attributes.unit_of_measurement, f = this.getCustomizationForType(t), m = this._handleDomainAction(t), y = Tt({
@@ -3085,11 +3089,11 @@ let O = class extends K {
       )
     }), p = {
       horizontal: this._config.content_layout === "horizontal"
-    }, _ = this._getIconStyles("extra", {
-      color: n,
+    }, _ = this._computeIconColorOverride(t, r), A = this._computeStateColorMap(t, r), $ = this._getIconStyles("extra", {
+      color: A || _ || n,
       background_color: c,
       square: this._config.square
-    }), A = this._computeIconColorOverride(t, r), b = this._computeStateColorMap(t, r), g = this._computeStateIconMap(t, r) || s;
+    }), g = this._computeStateIconMap(t, r) || s;
     let v;
     const U = f == null ? void 0 : f.state_content;
     return U !== void 0 ? v = (Array.isArray(U) ? U : [U]).map((S) => {
@@ -3102,15 +3106,15 @@ let O = class extends K {
       if (L && i.attributes && L in i.attributes) {
         const H = i.attributes[L];
         if (H == null) return "";
-        let G;
-        /temperature/i.test(L) ? G = (mt = (R = this.hass.config) == null ? void 0 : R.unit_system) == null ? void 0 : mt.temperature : /humidity/i.test(L) ? G = "%" : typeof i.attributes.unit_of_measurement == "string" && (G = i.attributes.unit_of_measurement);
+        let W;
+        /temperature/i.test(L) ? W = (mt = (R = this.hass.config) == null ? void 0 : R.unit_system) == null ? void 0 : mt.temperature : /humidity/i.test(L) ? W = "%" : typeof i.attributes.unit_of_measurement == "string" && (W = i.attributes.unit_of_measurement);
         const kt = typeof H == "string" && H.trim() !== "" && !Number.isNaN(Number(H));
         if (typeof H == "number" || kt)
           try {
             const F = typeof H == "number" ? H : Number(H), V = $e(F, this.hass.locale);
-            return G ? `${V} ${G}` : V;
+            return W ? `${V} ${W}` : V;
           } catch {
-            return G ? `${String(H)} ${G}` : String(H);
+            return W ? `${String(H)} ${W}` : String(H);
           }
         return N(
           this.hass,
@@ -3119,26 +3123,26 @@ let O = class extends K {
         );
       }
       return x;
-    }).filter((S) => S !== "").join(" · ") : v = `${u}${h ? ` ${h}` : ""}`, $`
+    }).filter((S) => S !== "").join(" · ") : v = `${u}${h ? ` ${h}` : ""}`, b`
       <sl-tab slot="nav" panel=${t} @action=${m} .actionHandler=${y}>
         <div class="extra-entity ${pt(p)}">
-          <div class="entity-icon" style=${X(_)}>
-            ${(g || "").startsWith("/") || (g || "").startsWith("http") ? $`<img
+          <div class="entity-icon" style=${X($)}>
+            ${(g || "").startsWith("/") || (g || "").startsWith("http") ? b`<img
                   src=${g}
                   alt=${o}
                   style="border-radius:${this._config.square ? "20%" : "50%"};object-fit:cover;"
-                />` : $`<ha-state-icon
+                />` : b`<ha-state-icon
                   .hass=${this.hass}
                   .stateObj=${r}
                   .icon=${g}
                   .stateColor=${!0}
                   data-domain=${I(t)}
                   data-state=${r.state}
-                  style="${(a || "") + (b ? `;color:${b}` : A ? `;color:${A}` : "")}"
+                  style="${(a || "") + (A ? `;color:${A}` : _ ? `;color:${_}` : n ? `;color:var(--${n}-color)` : "")}"
                 ></ha-state-icon>`}
           </div>
           <div class="entity-info">
-            ${this.hide_content_name ? "" : $`<div class="entity-name">${o}</div>`}
+            ${this.hide_content_name ? "" : b`<div class="entity-name">${o}</div>`}
             <div class="entity-state">
               ${v}
             </div>
@@ -3178,7 +3182,7 @@ let O = class extends K {
   }
   renderGroupTab(e, t) {
     const i = Bt(this, e);
-    if (!i.length) return $``;
+    if (!i.length) return b``;
     const s = e.group_id || `${this.hass.localize("component.group.entity_component._.name")} ${t + 1}`, o = e.group_icon || "mdi:format-list-group", n = this.getCustomColor(s), a = this.getBackgroundColor(s), c = () => {
       this.selectedGroup = t;
     }, r = Tt({
@@ -3191,7 +3195,7 @@ let O = class extends K {
       background_color: a,
       square: this._config.square
     });
-    return $`
+    return b`
       <sl-tab
         slot="nav"
         panel=${"group-" + t}
@@ -3203,7 +3207,7 @@ let O = class extends K {
             <ha-icon icon=${o}></ha-icon>
           </div>
           <div class="entity-info">
-            ${this.hide_content_name ? "" : $`<div class="entity-name">${s}</div>`}
+            ${this.hide_content_name ? "" : b`<div class="entity-name">${s}</div>`}
             <div class="entity-state">
               ${i.length}
               ${e.group_status ? ` ${e.group_status}` : ""}
@@ -3215,7 +3219,7 @@ let O = class extends K {
   }
   renderDomainTab(e) {
     const { domain: t } = e, i = this._isOn(t), s = this._totalEntities(t);
-    if (!(this._shouldShowTotalEntities(t) ? s : i).length) return $``;
+    if (!(this._shouldShowTotalEntities(t) ? s : i).length) return b``;
     const a = this.getCustomColor(t), c = this.getCustomizationForType(t), r = this._handleDomainAction(t), l = Tt({
       hasHold: ft(
         (c == null ? void 0 : c.hold_action) ?? this._config.hold_action
@@ -3230,7 +3234,7 @@ let O = class extends K {
       background_color: this.getBackgroundColor(t),
       square: this._config.square
     });
-    return $`
+    return b`
       <sl-tab
         slot="nav"
         panel=${t}
@@ -3245,7 +3249,7 @@ let O = class extends K {
             ></ha-icon>
           </div>
           <div class="entity-info">
-            ${this.hide_content_name ? "" : $`<div class="entity-name">
+            ${this.hide_content_name ? "" : b`<div class="entity-name">
                   ${this.getCustomName(t) || this.computeLabel({ name: t })}
                 </div>`}
             <div class="entity-state">
@@ -3260,7 +3264,7 @@ let O = class extends K {
   }
   renderDeviceClassTab(e) {
     const { domain: t, deviceClass: i } = e, s = this._isOn(t, i), o = this._totalEntities(t, i);
-    if (!(this._shouldShowTotalEntities(t, i) ? o : s).length) return $``;
+    if (!(this._shouldShowTotalEntities(t, i) ? o : s).length) return b``;
     const c = this.getCustomColor(t, i), r = this.getCustomizationForType(
       j(t, i)
     ), l = this._handleDomainAction(t, i), d = Tt({
@@ -3277,7 +3281,7 @@ let O = class extends K {
       background_color: this.getBackgroundColor(t, i),
       square: this._config.square
     });
-    return $`
+    return b`
       <sl-tab
         slot="nav"
         panel=${i}
@@ -3289,7 +3293,7 @@ let O = class extends K {
             <ha-icon icon=${this.getCustomIcon(t, i)}></ha-icon>
           </div>
           <div class="entity-info">
-            ${this.hide_content_name ? "" : $`<div class="entity-name">
+            ${this.hide_content_name ? "" : b`<div class="entity-name">
                   ${this.getCustomName(t, i) || this.computeLabel({ name: i })}
                 </div>`}
             <div class="entity-state">
@@ -3327,7 +3331,7 @@ let O = class extends K {
     ), n = {
       "no-scroll": !!this._config.no_scroll
     }, a = this.getPersonItems();
-    return $`
+    return b`
       <ha-card>
         <sl-tab-group no-scroll-controls class=${pt(n)}>
           ${tt(
@@ -3341,7 +3345,7 @@ let O = class extends K {
           "border-radius": (h = this._config) != null && h.square ? "20%" : "50%",
           filter: l ? "grayscale(100%)" : "none"
         };
-        return $`
+        return b`
                 <sl-tab
                   slot="nav"
                   panel=${c.entity_id}
@@ -3349,18 +3353,18 @@ let O = class extends K {
                 >
                   <div class="entity ${pt(d)}">
                     <div class="entity-icon" style=${X(u)}>
-                      ${c.attributes.entity_picture ? $`<img
+                      ${c.attributes.entity_picture ? b`<img
                             src=${c.attributes.entity_picture}
                             alt=${c.attributes.friendly_name || c.entity_id}
                             style=${X(u)}
-                          />` : $`<ha-icon
+                          />` : b`<ha-icon
                             class="center"
                             icon=${c.attributes.icon || "mdi:account"}
                             style=${X(u)}
                           ></ha-icon>`}
                     </div>
                     <div class="entity-info">
-                      ${this.hide_content_name ? "" : $`<div class="entity-name">
+                      ${this.hide_content_name ? "" : b`<div class="entity-name">
                             ${((f = c.attributes.friendly_name) == null ? void 0 : f.split(" ")[0]) || ""}
                           </div>`}
                       <div class="entity-state">
@@ -3549,12 +3553,12 @@ class ne extends K {
     return this._entityKeys.has(t) || this._entityKeys.set(t, Math.random().toString()), this._entityKeys.get(t);
   }
   render() {
-    return this.hass ? $`
+    return this.hass ? b`
       <div class="customization">
         ${this.customizationkey && tt(
       this.customizationkey,
       (t) => this._getKey(t),
-      (t, i) => $`
+      (t, i) => b`
             <div class="customize-item">
               <ha-select
                 label=${this.hass.localize(
@@ -3571,7 +3575,7 @@ class ne extends K {
                 @value-changed=${this._valueChanged}
               >
                 ${this.SelectOptions.map(
-        (s) => $`<mwc-list-item .value=${s.value}
+        (s) => b`<mwc-list-item .value=${s.value}
                       >${s.label}</mwc-list-item
                     >`
       )}
@@ -3609,7 +3613,7 @@ class ne extends K {
             @click=${this._addRow}
           >
             ${this.SelectOptions.map(
-      (t) => $`<mwc-list-item .value=${t.value}
+      (t) => b`<mwc-list-item .value=${t.value}
                   >${t.label}</mwc-list-item
                 >`
     )}
@@ -3822,7 +3826,7 @@ let J = class extends K {
   render() {
     var i;
     if (!this.hass || !this.config)
-      return $``;
+      return b``;
     (i = this._config) != null && i.invert_state || (this._config = {
       ...this._config,
       invert_state: this.config.invert_state || "false",
@@ -3843,7 +3847,7 @@ let J = class extends K {
     const t = {
       ...this._config
     };
-    return $`
+    return b`
       <ha-form
         .hass=${this.hass}
         .data=${t}
@@ -4236,7 +4240,7 @@ let st = class extends K {
       const d = this._lastFilter.area, u = this._lastFilter.floor, h = this._lastFilter.label, f = !Y(h, l), m = !Y(u, r);
       if (!Y(d, c) || m || f) {
         const _ = this.possibleToggleDomains.sort(
-          (A, b) => _t.indexOf(A) - _t.indexOf(b)
+          (A, $) => _t.indexOf(A) - _t.indexOf($)
         );
         this._config = {
           ...this._config,
@@ -4256,18 +4260,18 @@ let st = class extends K {
         let _ = Array.isArray(this._config.content) ? [...this._config.content] : [];
         _ = _.filter((g) => !p.includes(g));
         const A = this._config.extra_entities ?? [];
-        let b = 0;
+        let $ = 0;
         for (let g = 0; g < _.length; g++) {
           if (!A.includes(_[g])) {
-            b = g;
+            $ = g;
             break;
           }
-          b = g + 1;
+          $ = g + 1;
         }
         _ = [
-          ..._.slice(0, b),
+          ..._.slice(0, $),
           ...p.filter((g) => !_.includes(g)),
-          ..._.slice(b)
+          ..._.slice($)
         ], Y(_, this._config.content ?? []) || (this._config = {
           ...this._config,
           content: _
@@ -4506,7 +4510,7 @@ let st = class extends K {
   _renderSubElementEditor(e, t, i) {
     var c, r, l, d, u;
     const s = `_subElementEditor${e.charAt(0).toUpperCase() + e.slice(1)}`, o = this[s], n = ((l = (r = (c = this._config) == null ? void 0 : c.customization) == null ? void 0 : r[(o == null ? void 0 : o.index) ?? 0]) == null ? void 0 : l.type) ?? "unknown", a = this._labelForTypePair(n);
-    return $`
+    return b`
       <div class="header">
         <div class="back-title">
           <ha-icon-button
@@ -4665,13 +4669,13 @@ let st = class extends K {
     ), this._updateConfigFromRulesets();
   }
   _groupAllEntitiesByDomain() {
-    var d, u, h, f, m, y, p, _, A, b, g, v, U;
+    var d, u, h, f, m, y, p, _, A, $, g, v, U;
     const e = Object.values(((d = this.hass) == null ? void 0 : d.entities) || {}), t = Object.values(((u = this.hass) == null ? void 0 : u.devices) || {}), i = (h = this.hass) != null && h.areas ? Object.values(this.hass.areas) : [], s = {
       area: Array.isArray((f = this._config) == null ? void 0 : f.area) ? this._config.area : (m = this._config) != null && m.area ? [this._config.area] : [],
       floor: Array.isArray((y = this._config) == null ? void 0 : y.floor) ? this._config.floor : (p = this._config) != null && p.floor ? [this._config.floor] : [],
       label: Array.isArray((_ = this._config) == null ? void 0 : _.label) ? this._config.label : [],
       hiddenAreas: ((A = this._config) == null ? void 0 : A.hidden_areas) ?? [],
-      hiddenLabels: ((b = this._config) == null ? void 0 : b.hidden_labels) ?? [],
+      hiddenLabels: (($ = this._config) == null ? void 0 : $.hidden_labels) ?? [],
       hiddenEntities: ((g = this._config) == null ? void 0 : g.hidden_entities) ?? []
     }, o = Ie(
       e,
@@ -4737,8 +4741,8 @@ let st = class extends K {
     if (t.length === 0) return e;
     const i = ((h = this.hass) == null ? void 0 : h.entities) || {}, s = ((f = this.hass) == null ? void 0 : f.devices) || {}, o = (m = this.hass) != null && m.areas ? Object.values(this.hass.areas) : [], n = (y = this._config) == null ? void 0 : y.area, a = (p = this._config) == null ? void 0 : p.floor, c = (_ = this._config) == null ? void 0 : _.label, r = n ? Array.isArray(n) ? n : [n] : [], l = a ? Array.isArray(a) ? a : [a] : [], d = c ? Array.isArray(c) ? c : [c] : [];
     for (const A of t) {
-      const b = I(A);
-      if (!yt.includes(b)) continue;
+      const $ = I(A);
+      if (!yt.includes($)) continue;
       const g = i[A], v = g != null && g.device_id ? s[g.device_id] : void 0;
       if (((g == null ? void 0 : g.area_id) != null || (v == null ? void 0 : v.area_id) != null) && !(d.length && !(Array.isArray(g == null ? void 0 : g.labels) && g.labels.some((S) => d.includes(S)) || Array.isArray(v == null ? void 0 : v.labels) && v.labels.some((S) => d.includes(S)))) && !(r.length && !(g != null && g.area_id && r.includes(g.area_id) || v != null && v.area_id && r.includes(v.area_id)))) {
         if (l.length) {
@@ -4749,7 +4753,7 @@ let st = class extends K {
           );
           if (!k && !S) continue;
         }
-        e[b] || (e[b] = []), e[b].push(A);
+        e[$] || (e[$] = []), e[$].push(A);
       }
     }
     return e;
@@ -4757,7 +4761,7 @@ let st = class extends K {
   render() {
     var o, n;
     if (!this.hass || !this._config)
-      return $`<div>Loading...</div>`;
+      return b`<div>Loading...</div>`;
     const e = this._toggleschema(this.toggleSelectOptions), t = this._schema(
       this._config.filter ?? "",
       this._config.label_filter ?? !1,
@@ -4767,7 +4771,7 @@ let st = class extends K {
       content: this.possibleToggleDomains,
       ...this._config
     };
-    return this._subElementEditorDomain ? this._renderSubElementEditorDomain() : this._subElementEditorEntity ? this._renderSubElementEditorEntity() : $`
+    return this._subElementEditorDomain ? this._renderSubElementEditorDomain() : this._subElementEditorEntity ? this._renderSubElementEditorEntity() : b`
       <ha-form
         .hass=${this.hass}
         .data=${s}
@@ -4790,9 +4794,9 @@ let st = class extends K {
             @value-changed=${this._valueChanged}
           ></ha-form>
 
-          ${(((n = this._config) == null ? void 0 : n.hide_filter) ?? "") === "entity" ? $`
+          ${(((n = this._config) == null ? void 0 : n.hide_filter) ?? "") === "entity" ? b`
                 ${this._groupAllEntitiesByDomain().map(
-      (a) => $`
+      (a) => b`
                     <ha-expansion-panel outlined class="domain-panel">
                       <div slot="header" class="domain-header">
                         <ha-icon
@@ -4807,7 +4811,7 @@ let st = class extends K {
         a.domain,
         a.entities
       ).map(
-        (c) => $`
+        (c) => b`
                                 <ha-expansion-panel
                                   outlined
                                   class="domain-panel"
@@ -4826,7 +4830,7 @@ let st = class extends K {
                                     ${c.entities.map(
           (r) => {
             var l, d;
-            return $`
+            return b`
                                         <div class="entity-row">
                                           <span class="entity-name">
                                             ${((d = (l = this.hass.states[r]) == null ? void 0 : l.attributes) == null ? void 0 : d.friendly_name) || r}
@@ -4850,7 +4854,7 @@ let st = class extends K {
       ) : a.entities.map(
         (c) => {
           var r, l;
-          return $`
+          return b`
                                 <div class="entity-row">
                                   <span class="entity-name">
                                     ${((l = (r = this.hass.states[c]) == null ? void 0 : r.attributes) == null ? void 0 : l.friendly_name) || c}
@@ -4868,7 +4872,7 @@ let st = class extends K {
                     </ha-expansion-panel>
                   `
     )}
-              ` : $``}
+              ` : b``}
         </div>
       </ha-expansion-panel>
 
@@ -4882,7 +4886,7 @@ let st = class extends K {
         </div>
         <div class="content">
           ${this.rulesets.map(
-      (a, c) => $`
+      (a, c) => b`
               <ha-expansion-panel class="group-panel main" outlined>
                 <div slot="header" class="group-header">
                   ${a.group_id ? a.group_id : `${this.hass.localize(

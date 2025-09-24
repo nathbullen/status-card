@@ -986,10 +986,17 @@ export class StatusCard extends LitElement {
     } = {}
   ) {
     const { color, background_color, square, isNotHome } = options;
+    const resolveColor = (c?: string): string | undefined => {
+      if (!c) return undefined;
+      const s = String(c).trim();
+      if (s.startsWith("var(") || s.startsWith("#") || s.startsWith("rgb") || s.startsWith("hsl")) return s;
+      return `var(--${s}-color)`;
+    };
+    const resolved = resolveColor(color);
     const base: Record<string, string | undefined> = {
       "border-radius": square ? "20%" : "50%",
-      "background-color": background_color,
-      color: color ? `var(--${color}-color)` : undefined,
+      "background-color": background_color || (resolved ? `color-mix(in srgb, ${resolved} 18%, transparent)` : undefined),
+      color: resolved,
     };
 
     if (type === "person" && isNotHome) {
@@ -1026,14 +1033,13 @@ export class StatusCard extends LitElement {
       horizontal: this._config.content_layout === "horizontal",
     };
 
+    const climateIconColor = this._computeIconColorOverride(panel, stateObj);
+    const mappedColor = this._computeStateColorMap(panel, stateObj);
     const iconStyles = this._getIconStyles("extra", {
-      color,
+      color: mappedColor || climateIconColor || color,
       background_color,
       square: this._config.square,
     });
-
-    const climateIconColor = this._computeIconColorOverride(panel, stateObj);
-    const mappedColor = this._computeStateColorMap(panel, stateObj);
     const mappedIcon = this._computeStateIconMap(panel, stateObj) || icon;
 
     // Build multi-part state text if requested via customization.state_content
@@ -1114,7 +1120,7 @@ export class StatusCard extends LitElement {
                   .stateColor=${true}
                   data-domain=${computeDomain(panel)}
                   data-state=${stateObj.state}
-                  style="${(icon_css || "") + (mappedColor ? `;color:${mappedColor}` : climateIconColor ? `;color:${climateIconColor}` : "" )}"
+                  style="${(icon_css || "") + (mappedColor ? `;color:${mappedColor}` : climateIconColor ? `;color:${climateIconColor}` : color ? `;color:var(--${color}-color)` : "" )}"
                 ></ha-state-icon>`}
           </div>
           <div class="entity-info">
