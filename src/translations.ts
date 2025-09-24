@@ -126,6 +126,10 @@ export function computeLabelCallback(
       );
     case "icon":
       return hass!.localize("ui.components.selectors.selector.types.icon");
+    case "icon_color":
+      // Match HA wording used by tile & entity editors
+      return hass!.localize("ui.panel.lovelace.editor.card.tile.state_color") ||
+        "State color (default)";
     case "color":
       return hass!.localize("ui.panel.lovelace.editor.card.tile.color");
     case "background_color":
@@ -181,6 +185,10 @@ export function computeLabelCallback(
       );
     case "popup_card":
       return "Change Popup Card Type";
+    case "state_content":
+      return "State content";
+    case "state_color_map":
+      return "State color map";
     case "group_id":
       return (
         hass!.localize("component.group.entity_component._.name") +
