@@ -8,23 +8,14 @@ import type { HassEntity } from "home-assistant-js-websocket";
 import "./popup-dialog";
 import { computeLabelCallback, translateEntityState } from "./translations";
 import {
-  actionHandler,
-  applyThemesOnElement,
-  STATES_OFF,
-  CardConfig,
-  AreaRegistryEntry,
-  DeviceRegistryEntry,
-  EntityRegistryEntry,
   DeviceClassItem,
   DomainItem,
   ExtraItem,
   AnyItem,
-  Schema,
-  CustomizationConfig,
   GroupItem,
   computeEntitiesByDomain,
   typeKey,
-  domainIcon,
+  DOMAIN_ICONS,
   ALLOWED_DOMAINS,
 } from "./helpers";
 import {
@@ -34,14 +25,21 @@ import {
   handleAction,
   ActionHandlerEvent,
   ActionConfig,
-  formatNumber,
-} from "custom-card-helpers";
+  actionHandler,
+  applyThemesOnElement,
+  LovelaceCardConfig,
+  AreaRegistryEntry,
+  DeviceRegistryEntry,
+  EntityRegistryEntry,
+  STATES_OFF,
+  Schema,
+} from "./ha";
 import { filterEntitiesByRuleset } from "./smart_groups";
 
 @customElement("status-card-plus")
 export class StatusCard extends LitElement {
   @property({ attribute: false }) public hass!: HomeAssistant;
-  @property({ type: Object }) public _config!: CardConfig;
+  @property({ type: Object }) public _config!: LovelaceCardConfig;
 
   @state() public areas?: AreaRegistryEntry[] = [];
   @state() public devices: DeviceRegistryEntry[] = [];
@@ -116,9 +114,9 @@ export class StatusCard extends LitElement {
     DeviceRegistryEntry[],
     AreaRegistryEntry[],
     HomeAssistant["states"],
-    CardConfig["area"] | null,
-    CardConfig["floor"] | null,
-    CardConfig["label"] | null,
+    LovelaceCardConfig["area"] | null,
+    LovelaceCardConfig["floor"] | null,
+    LovelaceCardConfig["label"] | null,
     string[],
     string[],
     string[]
@@ -142,9 +140,9 @@ export class StatusCard extends LitElement {
       DeviceRegistryEntry[],
       AreaRegistryEntry[],
       HomeAssistant["states"],
-      CardConfig["area"] | null,
-      CardConfig["floor"] | null,
-      CardConfig["label"] | null,
+      LovelaceCardConfig["area"] | null,
+      LovelaceCardConfig["floor"] | null,
+      LovelaceCardConfig["label"] | null,
       string[],
       string[],
       string[]
@@ -278,7 +276,7 @@ export class StatusCard extends LitElement {
     });
   }
 
-  public setConfig(config: CardConfig): void {
+  public setConfig(config: LovelaceCardConfig): void {
     if (!config) {
       throw new Error("Invalid configuration.");
     }
@@ -353,7 +351,9 @@ export class StatusCard extends LitElement {
     if (!this._config || !this.hass) return;
 
     const oldHass = changedProps.get("hass") as HomeAssistant | undefined;
-    const oldConfig = changedProps.get("_config") as CardConfig | undefined;
+    const oldConfig = changedProps.get("_config") as
+      | LovelaceCardConfig
+      | undefined;
 
     if (changedProps.has("selectedDomain") && this.selectedDomain) {
       const domain = this.selectedDomain;
@@ -517,17 +517,15 @@ export class StatusCard extends LitElement {
     }
   }
 
-  private _customizationIndex = memoizeOne((list?: CustomizationConfig[]) => {
-    const map = new Map<string, CustomizationConfig>();
+  private _customizationIndex = memoizeOne((list?: LovelaceCardConfig[]) => {
+    const map = new Map<string, LovelaceCardConfig>();
     (list ?? []).forEach((c) => {
       if (c.type) map.set(c.type.toLowerCase(), c);
     });
     return map;
   });
 
-  public getCustomizationForType(
-    type: string
-  ): CustomizationConfig | undefined {
+  public getCustomizationForType(type: string): LovelaceCardConfig | undefined {
     if (!type) return undefined;
     const map = this._customizationIndex(this._config.customization);
     return map.get(type.toLowerCase());
@@ -559,16 +557,32 @@ export class StatusCard extends LitElement {
       return entity.attributes.icon;
     }
 
-    if (!entity) {
-      const isInverted = customization?.invert === true;
-      const state = isInverted ? "off" : "on";
-      let fallbackDomain = domain;
-      if (!deviceClass && domain.includes(".")) {
-        fallbackDomain = domain.split(".")[0];
-      }
-
-      return domainIcon(fallbackDomain, state, deviceClass);
+    // Fallback: Use DOMAIN_ICONS from helpers.ts
+    const isInverted = customization?.invert === true;
+    const state = isInverted ? "off" : "on";
+    let fallbackDomain = domain;
+    if (!deviceClass && domain.includes(".")) {
+      fallbackDomain = domain.split(".")[0];
     }
+
+    // Try DOMAIN_ICONS lookup
+    if (DOMAIN_ICONS && DOMAIN_ICONS[fallbackDomain]) {
+      const icons = DOMAIN_ICONS[fallbackDomain];
+      if (deviceClass && typeof icons === "object") {
+        const dc = icons[deviceClass];
+        if (dc) {
+          if (typeof dc === "string") return dc;
+          if (typeof dc === "object" && "on" in dc && "off" in dc)
+            return dc[state] || dc["on"] || dc["off"];
+        }
+      }
+      if (typeof icons === "object" && "on" in icons && "off" in icons) {
+        return icons[state] || icons["on"] || icons["off"];
+      }
+      if (typeof icons === "string") return icons;
+    }
+
+    // No domainIcon fallback available here
     return "";
   }
 
@@ -828,7 +842,7 @@ export class StatusCard extends LitElement {
 
   private _computeExtraItems = memoizeOne(
     (
-      cfg: CardConfig,
+      cfg: LovelaceCardConfig,
       states: { [entity_id: string]: HassEntity }
     ): ExtraItem[] => {
       const content = cfg.content || [];
@@ -841,8 +855,8 @@ export class StatusCard extends LitElement {
           const entity: HassEntity | undefined = states[eid];
           if (!entity) return acc;
 
-          const cust: CustomizationConfig | undefined = cfg.customization?.find(
-            (c: CustomizationConfig) => c.type === eid
+          const cust: LovelaceCardConfig | undefined = cfg.customization?.find(
+            (c: LovelaceCardConfig) => c.type === eid
           );
           if (
             cust &&
@@ -1006,18 +1020,9 @@ export class StatusCard extends LitElement {
   }
 
   private renderExtraTab(item: ExtraItem): TemplateResult {
-    const { panel, entity, icon, name, color, icon_css, background_color } =
-      item;
+    const { panel, icon, name, color, icon_css, background_color } = item;
     const stateObj = this.hass.states[panel];
-    const raw = entity.state;
-    const num = Number(raw);
-    const displayState =
-      !Number.isNaN(num) && raw !== ""
-        ? formatNumber(num, this.hass.locale)
-        : translateEntityState(this.hass, raw, computeDomain(panel));
-    const unit = entity.attributes.unit_of_measurement;
     const customization = this.getCustomizationForType(panel);
-
     const handler = this._handleDomainAction(panel);
     const ah = actionHandler({
       hasHold: hasAction(
@@ -1099,8 +1104,15 @@ export class StatusCard extends LitElement {
       stateText = `${displayState}${unit ? ` ${unit}` : ""}`;
     }
 
+    const stateContent = customization?.state_content ?? undefined;
+
     return html`
-      <sl-tab slot="nav" panel=${panel} @action=${handler} .actionHandler=${ah}>
+      <ha-tab-group-tab
+        slot="nav"
+        panel=${panel}
+        @action=${handler}
+        .actionHandler=${ah}
+      >
         <div class="extra-entity ${classMap(contentClasses)}">
           <div class="entity-icon" style=${styleMap(iconStyles)}>
             ${(mappedIcon || "").startsWith("/") || (mappedIcon || "").startsWith("http")
@@ -1130,7 +1142,7 @@ export class StatusCard extends LitElement {
             </div>
           </div>
         </div>
-      </sl-tab>
+      </ha-tab-group-tab>
     `;
   }
 
@@ -1220,7 +1232,7 @@ export class StatusCard extends LitElement {
     });
 
     return html`
-      <sl-tab
+      <ha-tab-group-tab
         slot="nav"
         panel=${"group-" + index}
         @action=${handler}
@@ -1240,7 +1252,7 @@ export class StatusCard extends LitElement {
             </div>
           </div>
         </div>
-      </sl-tab>
+      </ha-tab-group-tab>
     `;
   }
 
@@ -1275,7 +1287,7 @@ export class StatusCard extends LitElement {
     });
 
     return html`
-      <sl-tab
+      <ha-tab-group-tab
         slot="nav"
         panel=${domain}
         @action=${handler}
@@ -1306,7 +1318,7 @@ export class StatusCard extends LitElement {
             </div>
           </div>
         </div>
-      </sl-tab>
+      </ha-tab-group-tab>
     `;
   }
 
@@ -1343,7 +1355,7 @@ export class StatusCard extends LitElement {
     });
 
     return html`
-      <sl-tab
+      <ha-tab-group-tab
         slot="nav"
         panel=${deviceClass}
         @action=${handler}
@@ -1375,7 +1387,7 @@ export class StatusCard extends LitElement {
             </div>
           </div>
         </div>
-      </sl-tab>
+      </ha-tab-group-tab>
     `;
   }
 
@@ -1422,7 +1434,7 @@ export class StatusCard extends LitElement {
     const personEntities = this.getPersonItems();
     return html`
       <ha-card>
-        <sl-tab-group no-scroll-controls class=${classMap(noScroll)}>
+        <ha-tab-group no-scroll-controls class=${classMap(noScroll)}>
           ${repeat(
             personEntities,
             (entity) => entity.entity_id,
@@ -1437,7 +1449,7 @@ export class StatusCard extends LitElement {
                 filter: isNotHome ? "grayscale(100%)" : "none",
               };
               return html`
-                <sl-tab
+                <ha-tab-group-tab
                   slot="nav"
                   panel=${entity.entity_id}
                   @click="${() => this.showMoreInfo(entity)}"
@@ -1473,7 +1485,7 @@ export class StatusCard extends LitElement {
                       </div>
                     </div>
                   </div>
-                </sl-tab>
+                </ha-tab-group-tab>
               `;
             }
           )}
@@ -1491,7 +1503,7 @@ export class StatusCard extends LitElement {
                 : "",
             (i) => this.renderTab(i)
           )}
-        </sl-tab-group>
+        </ha-tab-group>
       </ha-card>
     `;
   }
@@ -1504,9 +1516,47 @@ export class StatusCard extends LitElement {
         height: 100%;
         align-content: center;
       }
-      sl-tab-group {
+      ha-tab-group {
+        --track-width: unset !important;
         padding: 6px 4px;
-        align-content: center;
+      }
+      ha-tab-group-tab[active],
+      ha-tab-group-tab.active {
+        font-size: var(--ha-font-size-m);
+        --wa-color-brand-on-quiet: var(
+          --ha-tab-active-text-color,
+          var(--primary-color)
+        );
+        --wa-color-neutral-on-quiet: var(--wa-color-brand-on-quiet);
+        opacity: 0.8;
+        color: inherit;
+        --wa-space-l: 16px;
+      }
+      ha-tab-group-tab[active]:hover,
+      ha-tab-group-tab.active:hover {
+        color: var(--wa-color-brand-on-quiet) !important;
+      }
+      ha-tab-group::part(nav) {
+        padding: 0 !important;
+      }
+      ha-tab-group::part(scroll-button) {
+        display: none !important;
+      }
+      ha-tab-group-tab {
+        pointer-events: auto;
+      }
+      ha-tab-group-tab * {
+        pointer-events: none;
+      }
+      ha-tab-group-tab::part(base) {
+        padding: 0 8px !important;
+      }
+      ha-tab-group.no-scroll::part(tabs) {
+        display: flex;
+        flex-wrap: wrap;
+        overflow-x: visible !important;
+        max-width: 100%;
+        border-bottom: none !important;
       }
       .center {
         display: flex;
@@ -1579,26 +1629,6 @@ export class StatusCard extends LitElement {
         line-height: var(--ha-line-height-condensed);
         letter-spacing: 0.2px;
         color: var(--primary-text-color);
-      }
-      sl-tab {
-        pointer-events: auto;
-      }
-      sl-tab * {
-        pointer-events: none;
-      }
-      sl-tab::part(base) {
-        padding: 0 8px !important;
-        display: flex;
-      }
-      sl-tab-group::part(tabs) {
-        border-bottom: none !important;
-      }
-      sl-tab-group.no-scroll::part(tabs) {
-        display: flex;
-        flex-wrap: wrap;
-        overflow-x: visible !important;
-        max-width: 100%;
-        border-bottom: none !important;
       }
     `;
   }

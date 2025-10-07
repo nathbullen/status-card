@@ -1,36 +1,25 @@
 import { LitElement, html, css, PropertyValues } from "lit";
 import { repeat } from "lit/directives/repeat.js";
 import { property, state } from "lit/decorators.js";
-import {
-  LovelaceCard,
-  HomeAssistant,
-  computeDomain,
-} from "custom-card-helpers";
 import { HassEntity } from "home-assistant-js-websocket";
-import { Schema } from "./helpers";
+import memoizeOne from "memoize-one";
 import {
   mdiClose,
   mdiDotsVertical,
   mdiSwapHorizontal,
   mdiToggleSwitchOffOutline,
 } from "@mdi/js";
+import {
+  LovelaceCard,
+  HomeAssistant,
+  computeDomain,
+  AreaRegistryEntry,
+  Schema,
+  STATES_OFF,
+} from "./ha";
+import { compareByFriendlyName, _formatDomain, typeKey } from "./helpers";
 import { computeLabelCallback, translateEntityState } from "./translations";
-import memoizeOne from "memoize-one";
-import { _formatDomain, typeKey, compareByFriendlyName } from "./helpers";
 import { filterEntitiesByRuleset } from "./smart_groups";
-import { AreaRegistryEntry } from "./helpers";
-
-const OFF_STATES = new Set([
-  "off",
-  "idle",
-  "not_home",
-  "closed",
-  "locked",
-  "standby",
-  "disarmed",
-  "unknown",
-  "unavailable",
-]);
 
 export class StatusCardPopup extends LitElement {
   @property({ type: Boolean }) public open = false;
@@ -58,7 +47,7 @@ export class StatusCardPopup extends LitElement {
   private _cardEls: Map<string, HTMLElement> = new Map();
   private _lastEntityIds: string[] = [];
 
-  public showDialog(params: {
+  public async showDialog(params: {
     title?: string;
     hass: HomeAssistant;
     entities?: HassEntity[];
@@ -67,7 +56,7 @@ export class StatusCardPopup extends LitElement {
     selectedDeviceClass?: string;
     selectedGroup?: number;
     card?: unknown;
-  }): void {
+  }): Promise<void> {
     this.title = params.title ?? this.title;
     this.hass = params.hass;
     this.entities = params.entities ?? [];
@@ -79,6 +68,44 @@ export class StatusCardPopup extends LitElement {
     this._cardEls.clear();
     this.open = true;
     this.requestUpdate();
+    try {
+      await this.updateComplete;
+    } catch (_) {}
+    this._applyDialogStyleAfterRender();
+  }
+
+  private _applyDialogStyleAfterRender() {
+    try {
+      requestAnimationFrame(() => {
+        try {
+          this._applyDialogStyle();
+        } catch (_) {}
+      });
+    } catch (_) {
+      try {
+        this._applyDialogStyle();
+      } catch (_) {}
+    }
+  }
+
+  private _applyDialogStyle() {
+    const surface = document
+      .querySelector("body > home-assistant")
+      ?.shadowRoot?.querySelector("status-card-popup")
+      ?.shadowRoot?.querySelector("ha-dialog")
+      ?.shadowRoot?.querySelector(
+        "div > div.mdc-dialog__container > div.mdc-dialog__surface"
+      ) as HTMLElement | null;
+
+    if (surface) {
+      surface.style.minHeight = "unset";
+      return true;
+    }
+    return false;
+  }
+
+  protected firstUpdated(_changedProperties: PropertyValues): void {
+    super.firstUpdated(_changedProperties);
   }
 
   private _onClosed = (_ev: Event) => {
@@ -100,10 +127,22 @@ export class StatusCardPopup extends LitElement {
     );
   };
 
+  connectedCallback(): void {
+    super.connectedCallback();
+    window.addEventListener("popstate", this._onPopState);
+  }
+
   disconnectedCallback(): void {
     super.disconnectedCallback();
+    window.removeEventListener("popstate", this._onPopState);
     this._cardEls.clear();
   }
+
+  private _onPopState = (ev: PopStateEvent) => {
+    if (this.open) {
+      this._onClosed(ev);
+    }
+  };
 
   private _toTileConfig(cardConfig: {
     type: string;
@@ -359,7 +398,7 @@ export class StatusCardPopup extends LitElement {
   }
 
   private _isActive(e: HassEntity): boolean {
-    return !OFF_STATES.has(e.state);
+    return !STATES_OFF.includes(e.state);
   }
 
   private _popupCardConfigCache = new Map<
@@ -520,9 +559,6 @@ export class StatusCardPopup extends LitElement {
         @closed=${this._onClosed}
         style="--columns: ${displayColumns};"
       >
-        <style>
-          ${StatusCardPopup.styles}
-        </style>
         <div class="dialog-header">
           <ha-icon-button
             slot="trigger"
@@ -610,7 +646,7 @@ export class StatusCardPopup extends LitElement {
               `
             : ""}
         </div>
-        <div class="dialog-content">
+        <div class="dialog-content scrollable">
           ${this.card?.list_mode
             ? !ungroupAreas
               ? html`
@@ -857,17 +893,29 @@ export class StatusCardPopup extends LitElement {
       gap: 8px;
       margin-bottom: 12px;
       min-width: 15vw;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      padding-bottom: 8px;
+      border-bottom: 1px solid rgba(0, 0, 0, 0.07);
+      background: transparent;
     }
     .dialog-header .menu-button {
       margin-left: auto;
     }
-    .dialog-content {
+    .dialog-content.scrollable {
       margin-bottom: 16px;
+      max-height: 80vh;
+      overflow-y: auto;
+      scrollbar-width: none;
+      -ms-overflow-style: none;
+    }
+    .dialog-content.scrollable::-webkit-scrollbar {
+      display: none;
     }
     .dialog-actions {
       text-align: right;
     }
-
     .cards-wrapper {
       display: flex;
       flex-direction: column;
@@ -890,7 +938,7 @@ export class StatusCardPopup extends LitElement {
       width: calc(var(--columns, 4) * 22.5vw);
       box-sizing: border-box;
       font-size: 1.2em;
-      margin: 0.8em 0.2em;
+      margin: 0.8em 0.2em 0em;
     }
     .entity-cards {
       display: grid;
@@ -900,6 +948,7 @@ export class StatusCardPopup extends LitElement {
       box-sizing: border-box;
       overflow-x: hidden;
       justify-content: center;
+      margin-top: 0.8em;
     }
     .entity-card {
       width: 22.5vw;
@@ -935,7 +984,7 @@ export class StatusCardPopup extends LitElement {
         overflow-x: hidden;
       }
       .entity-card {
-        width: 100%;
+        width: 92vw;
       }
       .entity-cards {
         grid-template-columns: 1fr;
