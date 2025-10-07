@@ -141,7 +141,7 @@ export class ItemEditor extends LitElement {
     if (!this._config?.invert_state) {
       this._config = {
         ...this._config,
-        type: this._config?.type ?? this.config.type ?? "",
+        type: this.config.type || "",
         invert_state: this.config.invert_state || "false",
         icon_color: this.config.icon_color || undefined,
         tap_action: this.config.tap_action || undefined,
