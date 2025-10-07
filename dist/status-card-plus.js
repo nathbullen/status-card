@@ -3802,12 +3802,12 @@ let J = class extends K {
     });
   }
   render() {
-    var i, s;
+    var i;
     if (!this.hass || !this.config)
       return $``;
     (i = this._config) != null && i.invert_state || (this._config = {
       ...this._config,
-      type: ((s = this._config) == null ? void 0 : s.type) ?? this.config.type ?? "",
+      type: this.config.type || "",
       invert_state: this.config.invert_state || "false",
       icon_color: this.config.icon_color || void 0,
       tap_action: this.config.tap_action || void 0,
@@ -3831,7 +3831,7 @@ let J = class extends K {
         .hass=${this.hass}
         .data=${t}
         .schema=${e}
-        .computeLabel=${(o) => Rt(this.hass, o)}
+        .computeLabel=${(s) => Rt(this.hass, s)}
         @value-changed=${this._valueChangedSchema}
       ></ha-form>
     `;
@@ -4192,7 +4192,7 @@ let ot = class extends K {
       list_mode: e.list_mode ?? !1,
       hide_content_name: e.hide_content_name ?? !1,
       customization: e.customization ?? []
-    }, this._loadRulesetsFromConfig();
+    }, this._loadRulesetsFromConfig(), this.requestUpdate();
   }
   _updateAreaFloorInConfig() {
     if (!this._config || !this._config.filter) return;

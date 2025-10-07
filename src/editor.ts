@@ -73,6 +73,7 @@ export class StatusCardEditor extends LitElement {
       customization: config.customization ?? [],
     };
     this._loadRulesetsFromConfig();
+    this.requestUpdate();
   }
 
   private _updateAreaFloorInConfig(): void {
