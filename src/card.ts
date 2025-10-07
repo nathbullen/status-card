@@ -33,6 +33,7 @@ import {
   EntityRegistryEntry,
   STATES_OFF,
   Schema,
+  formatNumber,
 } from "./ha";
 import { filterEntitiesByRuleset } from "./smart_groups";
 
@@ -1020,9 +1021,18 @@ export class StatusCard extends LitElement {
   }
 
   private renderExtraTab(item: ExtraItem): TemplateResult {
-    const { panel, icon, name, color, icon_css, background_color } = item;
+    const { panel, entity, icon, name, color, icon_css, background_color } =
+      item;
     const stateObj = this.hass.states[panel];
+    const raw = entity.state;
+    const num = Number(raw);
+    const displayState =
+      !Number.isNaN(num) && raw !== ""
+        ? formatNumber(num, this.hass.locale)
+        : translateEntityState(this.hass, raw, computeDomain(panel));
+    const unit = entity.attributes.unit_of_measurement;
     const customization = this.getCustomizationForType(panel);
+
     const handler = this._handleDomainAction(panel);
     const ah = actionHandler({
       hasHold: hasAction(
