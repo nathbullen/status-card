@@ -290,6 +290,7 @@ export class StatusCard extends LitElement {
     this.hiddenEntities = config.hidden_entities || [];
     this.hiddenLabels = config.hidden_labels || [];
     this.hiddenAreas = config.hidden_areas || [];
+    this.requestUpdate();
   }
 
   private _showPopup(
