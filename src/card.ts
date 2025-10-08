@@ -17,6 +17,8 @@ import {
   typeKey,
   DOMAIN_ICONS,
   ALLOWED_DOMAINS,
+  deviceClasses,
+  _formatDomain,
 } from "./helpers";
 import {
   HomeAssistant,
@@ -522,15 +524,72 @@ export class StatusCard extends LitElement {
   private _customizationIndex = memoizeOne((list?: LovelaceCardConfig[]) => {
     const map = new Map<string, LovelaceCardConfig>();
     (list ?? []).forEach((c) => {
-      if (c.type) map.set(c.type.toLowerCase(), c);
+      if (!c?.type) return;
+      const normalized = this._normalizeTypeKey(c.type);
+      if (normalized) {
+        map.set(normalized, c);
+      }
     });
     return map;
   });
 
   public getCustomizationForType(type: string): LovelaceCardConfig | undefined {
     if (!type) return undefined;
+    const normalized = this._normalizeTypeKey(type);
+    if (!normalized) return undefined;
     const map = this._customizationIndex(this._config.customization);
-    return map.get(type.toLowerCase());
+    return map.get(normalized);
+  }
+
+  private _normalizeTypeKey(raw?: string): string | undefined {
+    if (!raw) return undefined;
+    const trimmed = raw.trim();
+    if (!trimmed) return undefined;
+    const lower = trimmed.toLowerCase();
+
+    // Direct domain slug match
+    if (ALLOWED_DOMAINS.includes(lower)) {
+      return lower;
+    }
+
+    // Match friendly domain label
+    for (const domain of ALLOWED_DOMAINS) {
+      if (_formatDomain(domain).toLowerCase() === lower) {
+        return domain;
+      }
+    }
+
+    // Handle device-class friendly format "Domain - Class"
+    if (trimmed.includes(" - ")) {
+      const [domainLabel, classLabel] = trimmed.split(" - ");
+      const domainCandidate = domainLabel.trim().toLowerCase();
+      let domainSlug = ALLOWED_DOMAINS.find(
+        (d) => _formatDomain(d).toLowerCase() === domainCandidate
+      );
+      if (!domainSlug) {
+        domainSlug = domainCandidate.replace(/\s+/g, "_");
+      }
+      const dcCandidate = classLabel.trim().toLowerCase().replace(/\s+/g, "_");
+      let deviceSlug = deviceClasses[domainSlug]?.find((dc) => dc === dcCandidate);
+      if (!deviceSlug) {
+        deviceSlug = dcCandidate;
+      }
+      return `${domainSlug}.${deviceSlug}`;
+    }
+
+    // Handle canonical domain.device_class strings
+    if (lower.includes(".")) {
+      const [domainPart, secondPart] = lower.split(".");
+      if (ALLOWED_DOMAINS.includes(domainPart)) {
+        if (deviceClasses[domainPart]?.includes(secondPart)) {
+          return `${domainPart}.${secondPart}`;
+        }
+        return lower;
+      }
+      return lower;
+    }
+
+    return lower.replace(/\s+/g, "_");
   }
 
   private getCustomIcon(
@@ -857,9 +916,7 @@ export class StatusCard extends LitElement {
           const entity: HassEntity | undefined = states[eid];
           if (!entity) return acc;
 
-          const cust: LovelaceCardConfig | undefined = cfg.customization?.find(
-            (c: LovelaceCardConfig) => c.type === eid
-          );
+          const cust = this.getCustomizationForType(eid);
           if (
             cust &&
             cust.state !== undefined &&
@@ -945,14 +1002,21 @@ export class StatusCard extends LitElement {
         )
   );
 
-  private _computeDomainItems = memoizeOne((content: string[]): DomainItem[] =>
-    content
-      .map((c, idx) =>
-        !c.includes(" - ")
-          ? ({ type: "domain" as const, domain: c, order: idx } as DomainItem)
-          : null
-      )
-      .filter((v): v is DomainItem => v !== null)
+  private _computeDomainItems = memoizeOne(
+    (content: string[], extraEntities: string[]): DomainItem[] =>
+      content
+        .map((entry, idx) => {
+          if (extraEntities.includes(entry)) return null;
+          if (entry.includes(" - ")) return null;
+          const normalized = this._normalizeTypeKey(entry);
+          if (!normalized || normalized.includes(".")) return null;
+          return {
+            type: "domain" as const,
+            domain: normalized,
+            order: idx,
+          } satisfies DomainItem;
+        })
+        .filter((v): v is DomainItem => v !== null)
   );
 
   private _computeDeviceClassItems = memoizeOne(
@@ -960,13 +1024,15 @@ export class StatusCard extends LitElement {
       content
         .map((c, idx) => {
           if (!c.includes(" - ")) return null;
-          const [rawDomain, rawClass] = c.split(" - ");
+          const normalized = this._normalizeTypeKey(c);
+          if (!normalized || !normalized.includes(".")) return null;
+          const [domain, deviceClass] = normalized.split(".");
           return {
             type: "deviceClass" as const,
-            domain: rawDomain.trim().toLowerCase().replace(/\s+/g, "_"),
-            deviceClass: rawClass.trim().toLowerCase(),
+            domain,
+            deviceClass,
             order: idx,
-          } as DeviceClassItem;
+          } satisfies DeviceClassItem;
         })
         .filter((v): v is DeviceClassItem => v !== null)
   );
@@ -985,7 +1051,10 @@ export class StatusCard extends LitElement {
   }
 
   private getDomainItems(): DomainItem[] {
-    return this._computeDomainItems(this._config.content || []);
+    return this._computeDomainItems(
+      this._config.content || [],
+      (this._config.extra_entities as string[]) || []
+    );
   }
 
   private getDeviceClassItems(): DeviceClassItem[] {

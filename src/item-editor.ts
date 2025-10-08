@@ -3,6 +3,7 @@ import { customElement, property, state } from "lit/decorators.js";
 import memoizeOne from "memoize-one";
 import { HomeAssistant, LovelaceCardConfig, UiAction } from "./ha";
 import { computeLabelCallback } from "./translations";
+import { ALLOWED_DOMAINS, _formatDomain } from "./helpers";
 
 @customElement("status-card-plus-item-editor")
 export class ItemEditor extends LitElement {
@@ -176,6 +177,45 @@ export class ItemEditor extends LitElement {
     `;
   }
 
+  private _normalizeType(raw?: string): string | undefined {
+    if (!raw) return undefined;
+    const trimmed = raw.trim();
+    if (!trimmed) return undefined;
+    const lower = trimmed.toLowerCase();
+
+    if (ALLOWED_DOMAINS.includes(lower)) {
+      return lower;
+    }
+
+    for (const domain of ALLOWED_DOMAINS) {
+      if (_formatDomain(domain).toLowerCase() === lower) {
+        return domain;
+      }
+    }
+
+    if (trimmed.includes(" - ")) {
+      const [domainLabel, classLabel] = trimmed.split(" - ");
+      const domainNormalized = this._normalizeType(domainLabel);
+      const classNormalized = classLabel
+        .trim()
+        .toLowerCase()
+        .replace(/\s+/g, "_");
+      return domainNormalized && classNormalized
+        ? `${domainNormalized}.${classNormalized}`
+        : undefined;
+    }
+
+    if (lower.includes(".")) {
+      const [domainPart, classPart] = lower.split(".");
+      const domainNormalized = this._normalizeType(domainPart);
+      return domainNormalized && classPart
+        ? `${domainNormalized}.${classPart}`
+        : domainNormalized;
+    }
+
+    return lower.replace(/\s+/g, "_");
+  }
+
   private _valueChangedSchema(event: CustomEvent): void {
     if (!this.config) {
       return;
@@ -193,6 +233,11 @@ export class ItemEditor extends LitElement {
       } else if (trimmed.length === 0) {
         delete incoming.state_content;
       }
+    }
+
+    const normalizedType = this._normalizeType(incoming.type ?? this.config.type);
+    if (normalizedType) {
+      incoming.type = normalizedType;
     }
 
     const updatedConfig: LovelaceCardConfig = {

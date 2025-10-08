@@ -22,6 +22,7 @@ import {
   compareByFriendlyName,
   ALLOWED_DOMAINS,
   DOMAIN_ICONS,
+  deviceClasses,
 } from "./helpers";
 import {
   mdiFormatListGroupPlus,
@@ -630,6 +631,115 @@ export class StatusCardEditor extends LitElement {
       this._buildOptions("toggle", possibleClasses, currentClasses)
   );
 
+  private _buildOptions(
+    type: "sensor" | "binary_sensor" | "toggle",
+    possibleClasses: string[],
+    currentClasses: string[]
+  ): SelectOption[] {
+    const states = this.hass?.states || {};
+    const combined = [...possibleClasses, ...currentClasses];
+    const valueToLabel = new Map<string, string>();
+
+    for (const raw of combined) {
+      if (!raw) continue;
+      const normalized = this._normalizeType(raw);
+      if (valueToLabel.has(normalized)) continue;
+      const label = this._labelForType(normalized, states);
+      valueToLabel.set(normalized, label);
+    }
+
+    const options: SelectOption[] = Array.from(valueToLabel.entries()).map(
+      ([value, label]) => ({ value, label })
+    );
+
+    options.sort((a, b) => {
+      const aIsEntity = a.value.includes(".");
+      const bIsEntity = b.value.includes(".");
+
+      if (aIsEntity && !bIsEntity) return -1;
+      if (!aIsEntity && bIsEntity) return 1;
+
+      return caseInsensitiveStringCompare(
+        a.label,
+        b.label,
+        this.hass!.locale.language
+      );
+    });
+
+    return options;
+  }
+
+  private _normalizeType(raw: string): string {
+    const trimmed = raw.trim();
+    const lower = trimmed.toLowerCase();
+
+    if (ALLOWED_DOMAINS.includes(lower)) {
+      return lower;
+    }
+
+    for (const domain of ALLOWED_DOMAINS) {
+      if (_formatDomain(domain).toLowerCase() === lower) {
+        return domain;
+      }
+    }
+
+    if (trimmed.includes(" - ")) {
+      const [domainLabel, classLabel] = trimmed.split(" - ");
+      const domainNormalized = this._normalizeType(domainLabel);
+      const classNormalized = classLabel
+        .trim()
+        .toLowerCase()
+        .replace(/\s+/g, "_");
+      return `${domainNormalized}.${classNormalized}`;
+    }
+
+    if (lower.includes(".")) {
+      const [domainPart, classPart] = lower.split(".");
+      const domainNormalized = this._normalizeType(domainPart);
+      return classPart ? `${domainNormalized}.${classPart}` : domainNormalized;
+    }
+
+    return lower.replace(/\s+/g, "_");
+  }
+
+  private _labelForType(
+    normalized: string,
+    states: HomeAssistant["states"]
+  ): string {
+    const value = this._normalizeType(normalized);
+
+    if (value.includes(".")) {
+      const [domain, deviceClass] = value.split(".");
+      const st = states?.[value];
+      if (st?.attributes?.friendly_name) {
+        return st.attributes.friendly_name as string;
+      }
+      const domainLabel =
+        this.hass!.localize(`component.${domain}.entity_component._.name`) ||
+        _formatDomain(domain);
+      const deviceLabel =
+        this.hass!.localize(
+          `ui.dialogs.entity_registry.editor.device_classes.${domain}.${deviceClass}`
+        ) ||
+        deviceClass.replace(/_/g, " ");
+      return `${domainLabel} - ${deviceLabel}`;
+    }
+
+    if (ALLOWED_DOMAINS.includes(value)) {
+      return (
+        this.hass!.localize(`component.${value}.entity_component._.name`) ||
+        _formatDomain(value)
+      );
+    }
+
+    const st = states?.[value];
+    if (st?.attributes?.friendly_name) {
+      return st.attributes.friendly_name as string;
+    }
+
+    return _formatDomain(value);
+  }
+
   private _parseTypePair(
     type: string
   ): { domain: string; deviceClass?: string } | null {
@@ -638,38 +748,6 @@ export class StatusCardEditor extends LitElement {
     const domain = match[1].toLowerCase().replace(/\s+/g, "_");
     const deviceClass = match[2].toLowerCase();
     return { domain, deviceClass };
-  }
-
-  private _labelForTypePair(type: string): string {
-    if (type.includes(".")) {
-      const st = this.hass?.states?.[type];
-      return (st?.attributes?.friendly_name as string) || type;
-    }
-
-    const pair = this._parseTypePair(type);
-
-    if (pair) {
-      const { domain, deviceClass } = pair;
-      if (domain === "switch" && deviceClass === "switch") {
-        const translatedSwitch = this.hass!.localize(
-          `component.switch.entity_component._.name`
-        );
-        return `${translatedSwitch} - ${translatedSwitch}`;
-      }
-      const translatedDomain =
-        this.hass!.localize(`component.${domain}.entity_component._.name`) ||
-        domain;
-      const translatedDeviceClass =
-        this.hass!.localize(
-          `ui.dialogs.entity_registry.editor.device_classes.${domain}.${deviceClass}`
-        ) || deviceClass;
-      return `${translatedDomain} - ${translatedDeviceClass}`;
-    }
-
-    if (type === "scene") return "Scene";
-    return (
-      this.hass!.localize(`component.${type}.entity_component._.name`) || type
-    );
   }
 
   private _memoizedClassesForArea = memoizeOne(
@@ -778,48 +856,6 @@ export class StatusCardEditor extends LitElement {
     );
   }
 
-  private _buildOptions(
-    type: "sensor" | "binary_sensor" | "toggle",
-    possibleClasses: string[],
-    currentClasses: string[]
-  ): SelectOption[] {
-    const allClasses = [...new Set([...possibleClasses, ...currentClasses])];
-
-    const states = this.hass?.states || {};
-    const labelCache = new Map<string, string>();
-    const options = allClasses.map((entry) => {
-      if (labelCache.has(entry)) {
-        return { value: entry, label: labelCache.get(entry)! };
-      }
-      let label: string;
-      if (entry.includes(".")) {
-        label = (states[entry]?.attributes?.friendly_name as string) || entry;
-      } else if (entry === "scene") {
-        label = "Scene";
-      } else {
-        label = this._labelForTypePair(entry);
-      }
-      labelCache.set(entry, label);
-      return { value: entry, label };
-    });
-
-    options.sort((a, b) => {
-      const aIsEntity = a.value.includes(".");
-      const bIsEntity = b.value.includes(".");
-
-      if (aIsEntity && !bIsEntity) return -1;
-      if (!aIsEntity && bIsEntity) return 1;
-
-      return caseInsensitiveStringCompare(
-        a.label,
-        b.label,
-        this.hass!.locale.language
-      );
-    });
-
-    return options;
-  }
-
   private _itemChanged(
     ev: CustomEvent<LovelaceCardConfig>,
     editorTarget: { index?: number } | undefined,
@@ -916,7 +952,7 @@ export class StatusCardEditor extends LitElement {
     const type =
       this._config?.customization?.[editor?.index ?? 0]?.type ?? "unknown";
 
-    const localizedType = this._labelForTypePair(type);
+    const localizedType = this._labelForType(type, this.hass?.states || {});
 
     return html`
       <div class="header">
