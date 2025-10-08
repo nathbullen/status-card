@@ -281,7 +281,8 @@ export class StatusCard extends LitElement {
     if (!config) {
       throw new Error("Invalid configuration.");
     }
-    this._config = config;
+    // Create a deep copy to ensure memoized functions see the change
+    this._config = JSON.parse(JSON.stringify(config));
     this.hide_person =
       config.hide_person !== undefined ? config.hide_person : false;
     this.hide_content_name =
