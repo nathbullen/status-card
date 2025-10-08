@@ -993,6 +993,20 @@ export class StatusCard extends LitElement {
     return this._computeDeviceClassItems(this._config.content || []);
   }
 
+  private _resolveColor(c?: string): string | undefined {
+    if (!c) return undefined;
+    const s = String(c).trim();
+    // If it's already a CSS color or variable, use it as-is
+    if (s.startsWith("var(") || s.startsWith("#") || s.startsWith("rgb") || s.startsWith("hsl")) return s;
+    // Check if it's a named CSS color (basic check for common theme variable names)
+    // If it looks like a theme variable name (contains "state-", ends with "-color", etc.), wrap it
+    if (s.includes("-") || s.startsWith("state") || s.startsWith("primary") || s.startsWith("accent")) {
+      return `var(--${s}${s.endsWith("-color") ? "" : "-color"})`;
+    }
+    // Otherwise, treat it as a CSS color name (red, blue, green, etc.)
+    return s;
+  }
+
   private _getIconStyles(
     type: "person" | "extra" | "domain" | "deviceClass",
     options: {
@@ -1002,13 +1016,7 @@ export class StatusCard extends LitElement {
     } = {}
   ) {
     const { color, square, isNotHome } = options;
-    const resolveColor = (c?: string): string | undefined => {
-      if (!c) return undefined;
-      const s = String(c).trim();
-      if (s.startsWith("var(") || s.startsWith("#") || s.startsWith("rgb") || s.startsWith("hsl")) return s;
-      return `var(--${s}-color)`;
-    };
-    const resolved = resolveColor(color);
+    const resolved = this._resolveColor(color);
     const base: Record<string, string | undefined> = {
       "border-radius": square ? "20%" : "50%",
       "background-color": resolved ? `color-mix(in srgb, ${resolved} 18%, transparent)` : undefined,
@@ -1051,8 +1059,11 @@ export class StatusCard extends LitElement {
 
     const climateIconColor = this._computeIconColorOverride(panel, stateObj);
     const mappedColor = this._computeStateColorMap(panel, stateObj);
+    // Resolve the base color properly (might be "red", "#ff0000", or "state-active")
+    const resolvedBaseColor = color ? this._resolveColor(color) : undefined;
+    const finalColor = mappedColor || climateIconColor || resolvedBaseColor;
     const iconStyles = this._getIconStyles("extra", {
-      color: mappedColor || climateIconColor || color,
+      color: finalColor,
       square: this._config.square,
     });
     const mappedIcon = this._computeStateIconMap(panel, stateObj) || icon;
@@ -1142,7 +1153,7 @@ export class StatusCard extends LitElement {
                   .stateColor=${true}
                   data-domain=${computeDomain(panel)}
                   data-state=${stateObj.state}
-                  style="${(icon_css || "") + (mappedColor ? `;color:${mappedColor}` : climateIconColor ? `;color:${climateIconColor}` : color ? `;color:var(--${color}-color)` : "" )}"
+                  style="${icon_css || ""}${finalColor ? `;color:${finalColor}` : ""}"
                 ></ha-state-icon>`}
           </div>
           <div class="entity-info">
