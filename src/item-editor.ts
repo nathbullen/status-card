@@ -1,164 +1,59 @@
 import { LitElement, TemplateResult, html, css, CSSResult } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
-import memoizeOne from "memoize-one";
-import { HomeAssistant, LovelaceCardConfig, UiAction } from "./ha";
+import { HomeAssistant, LovelaceCardConfig, Schema } from "./ha";
 import { computeLabelCallback } from "./translations";
-import { ALLOWED_DOMAINS, _formatDomain } from "./helpers";
+import {
+  getItemAppearanceSchema,
+  getItemActionsSchema,
+  getItemStyleSchema,
+} from "./editor-schema";
 
-@customElement("status-card-plus-item-editor")
+@customElement("status-card-item-editor")
 export class ItemEditor extends LitElement {
   @property({ attribute: false }) config?: LovelaceCardConfig;
   @property({ attribute: false }) hass?: HomeAssistant;
-  @property({ attribute: false }) lovelace?: any;
+  @property({ attribute: false }) lovelace?: unknown;
   @property({ type: Boolean }) useSensorSchema: boolean = false;
   @property({ type: Number }) index?: number;
-  @state() private getSchema?: string;
+  @property() public getSchema?: "domain" | "entity";
+  @property({ type: Boolean }) public isGroup = false;
   @state() private _config?: LovelaceCardConfig;
+  @state() private _activeTab = "appearance";
 
-  private _schemadomain = memoizeOne(() => {
-    const actions: UiAction[] = [
-      "more-info",
-      "toggle",
-      "navigate",
-      "url",
-      "perform-action",
-      "none",
-    ];
-    return [
-      { name: "invert", selector: { boolean: {} } },
-      { name: "show_total_number", selector: { boolean: {} } },
-      { name: "show_total_entities", selector: { boolean: {} } },
-      { name: "name", selector: { text: {} } },
-      { name: "icon", selector: { icon: {} } },
-      {
-        name: "icon_color",
-        selector: {
-          ui_color: { default_color: "state", include_state: true },
-        },
-      },
-      {
-        name: "background_color",
-        selector: {
-          color_rgb: { default_color: "state", include_state: true },
-        },
-      },
-      { name: "tap_action", selector: { ui_action: { actions } } },
-      { name: "double_tap_action", selector: { ui_action: { actions } } },
-      { name: "hold_action", selector: { ui_action: { actions } } },
-      { name: "popup_card", selector: { object: {} } },
-    ];
-  });
-
-  private _schemaEntity = memoizeOne(() => {
-    const entityId = this.config?.type || "";
-    const actions: UiAction[] = [
-      "more-info",
-      "toggle",
-      "navigate",
-      "url",
-      "perform-action",
-      "none",
-    ];
-    return [
-      {
-        name: "",
-        type: "grid",
-        schema: [
-          {
-            name: "invert_state",
-            required: true,
-            selector: {
-              select: {
-                mode: "dropdown",
-                options: [
-                  {
-                    label: this.hass!.localize(
-                      "ui.panel.lovelace.editor.condition-editor.condition.state.state_equal"
-                    ),
-                    value: "false",
-                  },
-                  {
-                    label: this.hass!.localize(
-                      "ui.panel.lovelace.editor.condition-editor.condition.state.state_not_equal"
-                    ),
-                    value: "true",
-                  },
-                ],
-              },
-            },
-          },
-          {
-            name: "state",
-            selector: { state: { entity_id: entityId } },
-          },
-        ],
-      },
-      {
-        name: "state_content",
-        selector: { ui_state_content: { entity_id: entityId } },
-      },
-      { name: "name", selector: { text: {} } },
-      { name: "show_entity_picture", selector: { boolean: {} } },
-      { name: "icon", selector: { icon: {} } },
-      {
-        name: "state_content",
-        selector: {
-          text: {},
-        },
-      },
-      {
-        name: "state_color_map",
-        selector: {
-          object: {},
-        },
-      },
-      {
-        name: "state_icon_map",
-        selector: {
-          object: {},
-        },
-      },
-      {
-        name: "icon_color",
-        selector: { ui_color: { default_color: "state", include_state: true } },
-      },
-      {
-        name: "background_color",
-        selector: {
-          color_rgb: { default_color: "state", include_state: true },
-        },
-      },
-      { name: "tap_action", selector: { ui_action: { actions } } },
-      { name: "double_tap_action", selector: { ui_action: { actions } } },
-      { name: "hold_action", selector: { ui_action: { actions } } },
-    ];
-  });
+  protected willUpdate(
+    changedProps: Map<string | number | symbol, unknown>
+  ): void {
+    if (changedProps.has("config") && this.config) {
+      this._config = {
+        ...this.config,
+        invert_state: this.config.invert_state || "false",
+      };
+    }
+  }
 
   protected render(): TemplateResult {
     if (!this.hass || !this.config) {
       return html``;
     }
 
-    if (!this._config?.invert_state) {
-      this._config = {
-        ...this._config,
-        type: this.config.type || "",
-        invert_state: this.config.invert_state || "false",
-        icon_color: this.config.icon_color || undefined,
-        tap_action: this.config.tap_action || undefined,
-        double_tap_action: this.config.double_tap_action || undefined,
-        hold_action: this.config.hold_action || undefined,
-      };
-    }
-
     let schema;
-    switch (this.getSchema) {
-      case "domain":
-        schema = this._schemadomain();
-        break;
-      case "entity":
-        schema = this._schemaEntity();
-        break;
+    if (this._activeTab === "appearance") {
+      schema = getItemAppearanceSchema(
+        this.getSchema!,
+        this.config?.type,
+        this.hass,
+        this._config?.badge_mode ?? false,
+        this.isGroup
+      );
+    } else if (this._activeTab === "actions") {
+      schema = getItemActionsSchema(
+        this.getSchema!,
+        this.config?.type,
+        this.hass,
+        this._config?.badge_mode ?? false
+      );
+    } else if (this._activeTab === "style") {
+      schema = getItemStyleSchema();
     }
 
     const data = {
@@ -166,54 +61,167 @@ export class ItemEditor extends LitElement {
     };
 
     return html`
-      <ha-form
-        .hass=${this.hass}
-        .data=${data}
-        .schema=${schema}
-        .computeLabel=${(schema: any) =>
-          computeLabelCallback(this.hass!, schema)}
-        @value-changed=${this._valueChangedSchema}
-      ></ha-form>
+      <ha-tab-group>
+        <ha-tab-group-tab
+          .active=${this._activeTab === "appearance"}
+          @click=${() => (this._activeTab = "appearance")}
+        >
+          ${this.hass.localize("ui.panel.lovelace.editor.card.map.appearance")}
+        </ha-tab-group-tab>
+        <ha-tab-group-tab
+          .active=${this._activeTab === "actions"}
+          @click=${() => (this._activeTab = "actions")}
+        >
+          ${this.hass.localize("ui.panel.lovelace.editor.card.generic.actions")}
+        </ha-tab-group-tab>
+        <ha-tab-group-tab
+          .active=${this._activeTab === "style"}
+          @click=${() => (this._activeTab = "style")}
+        >
+          Style
+        </ha-tab-group-tab>
+        ${this.getSchema === "domain"
+          ? html`
+              <ha-tab-group-tab
+                .active=${this._activeTab === "popup"}
+                @click=${() => (this._activeTab = "popup")}
+              >
+                Popup Card
+              </ha-tab-group-tab>
+            `
+          : ""}
+      </ha-tab-group>
+      ${this._activeTab === "style"
+        ? html`
+            <ha-alert alert-type="info" title="Style Guide">
+              <p>
+                You can use standard CSS per identifier. <br />
+                <strong>Identifiers:</strong>
+              </p>
+              <ul>
+                <li><b>button</b>: Item Container (Background, Border)</li>
+                <li><b>icon</b>: Item Icon</li>
+                <li><b>name</b>: Entity Name</li>
+                <li><b>state</b>: Entity State Value</li>
+                ${this.getSchema === "entity"
+                  ? html`<li><b>name</b>: Item Name (Label)</li>`
+                  : html``}
+              </ul>
+              <p>
+                <strong>Animations:</strong> <br />
+                spin, pulse, shake, blink, bounce
+              </p>
+              <p><strong>Example:</strong></p>
+              <pre>
+button:
+  --mdc-icon-size: 24px;
+  border: none;
+  color: green;            
+icon:
+  animation: spin 2s linear infinite;
+  --mdc-icon-size: 40px;
+  color: var(--primary-color);
+name:
+  font-size: 15px;    </pre
+              >
+            </ha-alert>
+          `
+        : ""}
+      ${this._activeTab === "popup"
+        ? this._renderPopupTab()
+        : html`
+            <ha-form
+              .hass=${this.hass}
+              .data=${data}
+              .schema=${schema}
+              .computeLabel=${(schema: Schema) => {
+                if (schema.name === "styles") return "Styles";
+                return computeLabelCallback(this.hass!, schema);
+              }}
+              @value-changed=${this._valueChangedSchema}
+            ></ha-form>
+          `}
     `;
   }
 
-  private _normalizeType(raw?: string): string | undefined {
-    if (!raw) return undefined;
-    const trimmed = raw.trim();
-    if (!trimmed) return undefined;
-    const lower = trimmed.toLowerCase();
+  private _renderPopupTab(): TemplateResult {
+    const popupCard = this._config?.popup_card;
 
-    if (ALLOWED_DOMAINS.includes(lower)) {
-      return lower;
+    if (!popupCard) {
+      return html`
+        <div class="card-picker">
+          <hui-card-picker
+            .hass=${this.hass}
+            .lovelace=${this.lovelace}
+            @config-changed=${this._cardPicked}
+          ></hui-card-picker>
+        </div>
+      `;
     }
 
-    for (const domain of ALLOWED_DOMAINS) {
-      if (_formatDomain(domain).toLowerCase() === lower) {
-        return domain;
-      }
-    }
+    return html`
+      <div class="card-editor">
+        <div class="card-header">
+          <h3>
+            Popup
+            ${this.hass!.localize(
+              "ui.panel.lovelace.editor.edit_card.tab_config"
+            )}
+          </h3>
+          <ha-button
+            class="warning"
+            @click=${this._removePopupCard}
+            .disabled=${!popupCard}
+          >
+            ${this.hass!.localize("ui.common.delete")}
+          </ha-button>
+        </div>
+        <hui-card-element-editor
+          .hass=${this.hass}
+          .lovelace=${this.lovelace}
+          .value=${popupCard}
+          @config-changed=${this._popupCardChanged}
+        ></hui-card-element-editor>
+      </div>
+    `;
+  }
 
-    if (trimmed.includes(" - ")) {
-      const [domainLabel, classLabel] = trimmed.split(" - ");
-      const domainNormalized = this._normalizeType(domainLabel);
-      const classNormalized = classLabel
-        .trim()
-        .toLowerCase()
-        .replace(/\s+/g, "_");
-      return domainNormalized && classNormalized
-        ? `${domainNormalized}.${classNormalized}`
-        : undefined;
-    }
+  private _cardPicked(ev: CustomEvent): void {
+    ev.stopPropagation();
+    const config = ev.detail.config;
+    this._updatePopupCard(config);
+  }
 
-    if (lower.includes(".")) {
-      const [domainPart, classPart] = lower.split(".");
-      const domainNormalized = this._normalizeType(domainPart);
-      return domainNormalized && classPart
-        ? `${domainNormalized}.${classPart}`
-        : domainNormalized;
-    }
+  private _popupCardChanged(ev: CustomEvent): void {
+    ev.stopPropagation();
+    const config = ev.detail.config;
+    this._updatePopupCard(config);
+  }
 
-    return lower.replace(/\s+/g, "_");
+  private _updatePopupCard(popup_card: LovelaceCardConfig): void {
+    if (!this._config) return;
+    const updatedConfig = {
+      ...this._config,
+      popup_card,
+    };
+    this._config = updatedConfig;
+    this.dispatchEvent(
+      new CustomEvent("config-changed", {
+        detail: updatedConfig,
+      })
+    );
+  }
+
+  private _removePopupCard(): void {
+    if (!this._config) return;
+    const { popup_card, ...rest } = this._config;
+    this._config = rest as LovelaceCardConfig;
+
+    this.dispatchEvent(
+      new CustomEvent("config-changed", {
+        detail: this._config,
+      })
+    );
   }
 
   private _valueChangedSchema(event: CustomEvent): void {
@@ -222,27 +230,9 @@ export class ItemEditor extends LitElement {
     }
     event.stopPropagation();
 
-    const incoming = { ...event.detail.value } as any;
-    if (typeof incoming.state_content === "string") {
-      const trimmed = incoming.state_content.trim();
-      if (trimmed.includes(",")) {
-        incoming.state_content = trimmed
-          .split(",")
-          .map((s: string) => s.trim())
-          .filter((s: string) => s.length > 0);
-      } else if (trimmed.length === 0) {
-        delete incoming.state_content;
-      }
-    }
-
-    const normalizedType = this._normalizeType(incoming.type ?? this.config.type);
-    if (normalizedType) {
-      incoming.type = normalizedType;
-    }
-
     const updatedConfig: LovelaceCardConfig = {
       ...this.config,
-      ...incoming,
+      ...event.detail.value,
     };
 
     this._config = updatedConfig;
@@ -282,12 +272,46 @@ export class ItemEditor extends LitElement {
         margin-top: 12px;
         display: block;
       }
+      ha-form {
+        display: block;
+      }
+      ha-selector {
+        width: 100%;
+      }
       .side-by-side {
         display: flex;
+        align-items: center;
       }
       .side-by-side > * {
         flex: 1 1 0%;
         padding-right: 4px;
+      }
+      ha-tab-group {
+        display: block;
+        margin-bottom: 16px;
+        padding: 0 1em;
+      }
+      ha-tab-group-tab {
+        flex: 1;
+      }
+      ha-tab-group-tab::part(base) {
+        width: 100%;
+        justify-content: center;
+      }
+      .card-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 16px;
+      }
+      .card-editor {
+        border: 1px solid var(--divider-color);
+        padding: 12px;
+        border-radius: 4px;
+        margin-top: 16px;
+      }
+      .warning {
+        --mdc-theme-primary: var(--error-color);
       }
     `;
   }

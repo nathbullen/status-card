@@ -11,15 +11,23 @@ import {
 } from "@mdi/js";
 import {
   LovelaceCard,
+  LovelaceCardConfig,
   HomeAssistant,
   computeDomain,
-  AreaRegistryEntry,
   Schema,
   STATES_OFF,
 } from "./ha";
-import { compareByFriendlyName, _formatDomain, typeKey } from "./helpers";
+import {
+  compareByFriendlyName,
+  typeKey,
+  createCardElement,
+  createCardElementSynchronous,
+  ensureHelpersLoaded,
+} from "./helpers";
 import { computeLabelCallback, translateEntityState } from "./translations";
-import { filterEntitiesByRuleset } from "./smart_groups";
+import { DOMAIN_FEATURES } from "./const";
+import { StatusCard } from "./card";
+import { PopupCardConfigCache, CardElementCache } from "./ha/types";
 
 export class StatusCardPopup extends LitElement {
   @property({ type: Boolean }) public open = false;
@@ -29,86 +37,97 @@ export class StatusCardPopup extends LitElement {
   @property({ type: String }) public content = "";
   @property({ type: Array }) public entities: HassEntity[] = [];
   @property({ attribute: false }) public hass?: HomeAssistant;
-  @property({ attribute: false }) public card!: LovelaceCard & {
-    areas?: AreaRegistryEntry[];
-    entities?: any[];
-    devices?: any[];
-    _config?: any;
-    selectedGroup?: number | null;
-    selectedDomain?: string | null;
-    getCustomizationForType?: (type: string) => any;
-    _totalEntities?: (...args: any[]) => HassEntity[];
-    _isOn?: (...args: any[]) => HassEntity[];
-    _shouldShowTotalEntities?: (...args: any[]) => boolean;
-    list_mode?: boolean;
-  };
+  @property({ attribute: false }) public card!: StatusCard;
   @state() public _showAll = false;
   @state() public selectedGroup?: number;
   private _cardEls: Map<string, HTMLElement> = new Map();
   private _lastEntityIds: string[] = [];
+  private _activeEntities: HassEntity[] = [];
+  private _allEntities: HassEntity[] = [];
+  private _opener: HTMLElement | null = null;
 
   public async showDialog(params: {
     title?: string;
     hass: HomeAssistant;
     entities?: HassEntity[];
+    allEntities?: HassEntity[];
     content?: string;
     selectedDomain?: string;
     selectedDeviceClass?: string;
     selectedGroup?: number;
-    card?: unknown;
+    card?: StatusCard;
+    initialShowAll?: boolean;
+    opener?: HTMLElement;
   }): Promise<void> {
     this.title = params.title ?? this.title;
     this.hass = params.hass;
+    this._opener = params.opener ?? null;
+    this._activeEntities = params.entities ?? [];
+    this._allEntities = params.allEntities ?? [];
+    if (!params.allEntities || params.allEntities.length === 0) {
+      this._allEntities = this._activeEntities;
+    }
+
     this.entities = params.entities ?? [];
     if (params.content !== undefined) this.content = params.content;
     this.selectedDomain = params.selectedDomain;
     this.selectedDeviceClass = params.selectedDeviceClass;
     this.selectedGroup = params.selectedGroup;
-    this.card = params.card as LovelaceCard & { areas?: AreaRegistryEntry[] };
+    this.card = params.card as StatusCard;
     this._cardEls.clear();
+    this._showAll = params.initialShowAll ?? false;
     this.open = true;
-    this.requestUpdate();
-    try {
-      await this.updateComplete;
-    } catch (_) {}
-    this._applyDialogStyleAfterRender();
-  }
-
-  private _applyDialogStyleAfterRender() {
-    try {
-      requestAnimationFrame(() => {
-        try {
-          this._applyDialogStyle();
-        } catch (_) {}
-      });
-    } catch (_) {
+    window.history.pushState({ statusCardPopup: true }, "");
+    await ensureHelpersLoaded();
+    if (!customElements.get("hui-tile-card")) {
       try {
-        this._applyDialogStyle();
-      } catch (_) {}
+        await customElements.whenDefined("hui-tile-card");
+      } catch {}
+    }
+    this.requestUpdate();
+    await this.updateComplete;
+
+    // Targeted reset to clear leaked transforms from ha-bottom-sheet (swipe actions)
+    const ad = this.renderRoot.querySelector("ha-adaptive-dialog");
+    if (ad && ad.shadowRoot) {
+      const bs = ad.shadowRoot.querySelector("ha-bottom-sheet") as HTMLElement;
+      if (bs) {
+        bs.style.removeProperty("--dialog-transform");
+        bs.style.removeProperty("--dialog-transition");
+      }
     }
   }
 
-  private _applyDialogStyle() {
-    const surface = document
-      .querySelector("body > home-assistant")
-      ?.shadowRoot?.querySelector("status-card-popup")
-      ?.shadowRoot?.querySelector("ha-dialog")
-      ?.shadowRoot?.querySelector(
-        "div > div.mdc-dialog__container > div.mdc-dialog__surface"
-      ) as HTMLElement | null;
-
-    if (surface) {
-      surface.style.minHeight = "unset";
-      return true;
+  private _handleMoreInfo = (ev: CustomEvent) => {
+    if (this._opener) {
+      ev.stopPropagation();
+      const event = new CustomEvent("hass-more-info", {
+        bubbles: true,
+        composed: true,
+        detail: ev.detail,
+      });
+      this._opener.dispatchEvent(event);
     }
-    return false;
-  }
+  };
+
 
   protected firstUpdated(_changedProperties: PropertyValues): void {
     super.firstUpdated(_changedProperties);
   }
 
-  private _onClosed = (_ev: Event) => {
+  private _close = () => {
+    if (!this.open) return;
+    this.open = false;
+    if (window.history.state?.statusCardPopup) {
+      window.history.back();
+    }
+  };
+
+  private _onDialogClosed = (ev: Event) => {
+    const target = ev.target as HTMLElement | null;
+    if (target && target.tagName !== 'HA-ADAPTIVE-DIALOG') {
+      return;
+    }
     this.open = false;
     this._cardEls.clear();
     this.dispatchEvent(
@@ -139,91 +158,53 @@ export class StatusCardPopup extends LitElement {
   }
 
   private _onPopState = (ev: PopStateEvent) => {
-    if (this.open) {
-      this._onClosed(ev);
+    if (this.open && !window.history.state?.statusCardPopup) {
+      this.open = false;
     }
   };
 
-  private _toTileConfig(cardConfig: {
-    type: string;
-    entity?: string;
-    [k: string]: any;
-  }) {
-    return {
-      type: "tile",
-      entity: cardConfig.entity,
-    };
-  }
-
   private async _createCardElement(
     hass: HomeAssistant,
-    cardConfig: { type: string; entity?: string; [key: string]: any },
+    cardConfig: LovelaceCardConfig,
     isFallback = false
   ): Promise<LovelaceCard | HTMLElement> {
-    try {
-      const helpers = await (window as any)?.loadCardHelpers?.();
-      if (helpers?.createCardElement) {
-        const el = helpers.createCardElement(cardConfig) as LovelaceCard;
-        (el as any).hass = hass;
-        (el as any).setAttribute?.("data-hui-card", "");
-        return el;
-      }
-    } catch {}
-
-    try {
-      const type = cardConfig.type || "tile";
-      const isCustom = typeof type === "string" && type.startsWith("custom:");
-      const tag = isCustom ? type.slice(7) : `hui-${type}-card`;
-
-      if (isCustom && !(customElements as any).get(tag)) {
-        await customElements.whenDefined(tag).catch(() => {});
-      }
-
-      const el = document.createElement(tag) as LovelaceCard;
-
-      if (typeof el.setConfig === "function") {
-        el.setConfig(cardConfig);
-      }
-
-      (el as any).hass = hass;
-      (el as any).setAttribute?.("data-hui-card", "");
-      return el;
-    } catch {
-      if (!isFallback) {
-        return this._createCardElement(
-          hass,
-          this._toTileConfig(cardConfig),
-          true
-        );
-      }
-      const empty = document.createElement("div");
-      empty.setAttribute("data-hui-card", "");
-      return empty;
-    }
+    return createCardElement(hass, cardConfig, isFallback);
   }
 
   private _getPopupCardConfig(entity: HassEntity) {
-    const card: any = this.card;
+    const card = this.card;
+
+    if (this.selectedGroup !== undefined && card._config.content?.[this.selectedGroup]) {
+      const groupId = card._config.content[this.selectedGroup];
+      
+      const customization = card.getCustomizationForType(groupId);
+
+      if (customization?.popup_card) {
+        return {
+          ...customization.popup_card,
+          entity: entity.entity_id,
+        } as LovelaceCardConfig;
+      }
+    }
+
     const domainFromEntity = computeDomain(entity.entity_id);
     const domain = this.selectedDomain || domainFromEntity;
     const deviceClass = this.selectedDomain
       ? this.selectedDeviceClass
-      : (this.hass?.states?.[entity.entity_id]?.attributes as any)
-          ?.device_class;
+      : this.hass?.states?.[entity.entity_id]?.attributes?.device_class;
+
     const key = typeKey(domain, deviceClass);
     const customization =
       typeof card?.getCustomizationForType === "function"
         ? card.getCustomizationForType(key)
         : undefined;
-    const popupCard = customization?.popup_card as any | undefined;
+    const popupCard = customization?.popup_card;
     const resolvedType: string =
       (popupCard && typeof popupCard.type === "string" && popupCard.type) ||
       "tile";
     const baseOptions =
-      resolvedType === "tile"
-        ? (this.DOMAIN_FEATURES as any)[domainFromEntity] ?? {}
-        : {};
-    let overrideOptions: any = {};
+      resolvedType === "tile" ? DOMAIN_FEATURES[domainFromEntity] ?? {} : {};
+    let overrideOptions: Record<string, unknown> = {};
     if (popupCard && typeof popupCard === "object") {
       const { type: _omitType, entity: _omitEntity, ...rest } = popupCard;
       overrideOptions = rest;
@@ -235,7 +216,8 @@ export class StatusCardPopup extends LitElement {
       entity: entity.entity_id,
       ...baseOptions,
       ...overrideOptions,
-    } as any;
+    } as LovelaceCardConfig;
+
     const hash = this._configHash(finalConfig);
     const cache = this._popupCardConfigCache.get(entity.entity_id);
     if (cache && cache.hash === hash) {
@@ -251,26 +233,54 @@ export class StatusCardPopup extends LitElement {
     if (!this.open) {
       return changedProps.has("open");
     }
-    if (changedProps.size === 1 && changedProps.has("hass")) {
-      const currentIds = this._getCurrentEntities()
-        .map((e) => e.entity_id)
-        .sort();
-      const lastIds = (this._lastEntityIds || []).slice().sort();
-      const same =
-        currentIds.length === lastIds.length &&
-        currentIds.every((id, i) => id === lastIds[i]);
-      this._updateCardsHass();
-      return !same;
+
+    if (changedProps.has("hass")) {
+      const oldHass = changedProps.get("hass") as HomeAssistant;
+      const newHass = this.hass;
+
+      if (
+        !newHass ||
+        !oldHass ||
+        oldHass.themes !== newHass.themes ||
+        oldHass.language !== newHass.language ||
+        oldHass.localize !== newHass.localize ||
+        this._hasRelevantStateChanged(oldHass, newHass)
+      ) {
+        const currentIds = this._getCurrentEntities()
+          .map((e) => e.entity_id)
+          .sort();
+        const lastIds = (this._lastEntityIds || []).slice().sort();
+        const same =
+          currentIds.length === lastIds.length &&
+          currentIds.every((id, i) => id === lastIds[i]);
+        this._updateCardsHass();
+        return !same;
+      }
+      return false;
     }
     return true;
+  }
+
+  private _hasRelevantStateChanged(
+    oldHass: HomeAssistant,
+    newHass: HomeAssistant
+  ): boolean {
+    for (const entity of this._allEntities) {
+      if (
+        oldHass.states[entity.entity_id] !== newHass.states[entity.entity_id]
+      ) {
+        return true;
+      }
+    }
+    return false;
   }
 
   private _updateCardsHass(): void {
     if (!this.hass) return;
     this._cardEls.forEach((el) => {
-      if ((el as any).hass !== this.hass) {
+      if ((el as LovelaceCard).hass !== this.hass) {
         try {
-          (el as any).hass = this.hass;
+          (el as LovelaceCard).hass = this.hass;
         } catch (_) {}
       }
     });
@@ -282,9 +292,21 @@ export class StatusCardPopup extends LitElement {
     const hash = this._configHash(cfg);
     const cached = this._cardElementCache.get(id);
     if (cached && cached.hash === hash) {
-      (cached.el as any).hass = this.hass;
+      (cached.el as LovelaceCard).hass = this.hass;
+      this._cardEls.set(id, cached.el);
       return cached.el;
     }
+
+    const syncEl = createCardElementSynchronous(this.hass!, cfg);
+    if (syncEl) {
+      if ((syncEl as LovelaceCard).hass !== this.hass) {
+        (syncEl as LovelaceCard).hass = this.hass;
+      }
+      this._cardEls.set(id, syncEl);
+      this._cardElementCache.set(id, { hash, el: syncEl });
+      return syncEl;
+    }
+
     const placeholder = document.createElement("div");
     placeholder.classList.add("card-placeholder");
     placeholder.setAttribute("data-hui-card", "");
@@ -293,47 +315,81 @@ export class StatusCardPopup extends LitElement {
       try {
         const current = this._cardEls.get(id);
         if (current === placeholder) {
-          placeholder.replaceWith(el as any);
-          this._cardEls.set(id, el as any);
-          this._cardElementCache.set(id, { hash, el: el as any });
+          placeholder.replaceWith(el);
+          this._cardEls.set(id, el);
+          this._cardElementCache.set(id, { hash, el: el });
         }
-        (el as any).hass = this.hass;
+        (el as LovelaceCard).hass = this.hass;
       } catch (_) {}
     });
     this._cardElementCache.set(id, { hash, el: placeholder });
     return placeholder;
   }
 
-  private _getCurrentEntities(): HassEntity[] {
-    const card = this.card as any;
-    const domain = this.selectedDomain!;
-    const deviceClass = this.selectedDeviceClass;
-    const group = this.selectedGroup;
+  protected willUpdate(changedProps: PropertyValues): void {
+    super.willUpdate(changedProps);
+    if (
+      changedProps.has("open") ||
+      changedProps.has("hass") ||
+      changedProps.has("selectedDomain") ||
+      changedProps.has("selectedGroup") ||
+      changedProps.has("_showAll")
+    ) {
+      this._entities = this._getCurrentEntities();
+    }
+  }
 
-    let ents: HassEntity[] = [];
+  @state() private _entities: HassEntity[] = [];
 
-    if (group !== undefined && card._config?.content?.[group]) {
-      const groupId = card._config.content[group];
-      const ruleset = card._config.rulesets?.find(
-        (g: any) => g.group_id === groupId
-      );
-      ents = ruleset ? filterEntitiesByRuleset(card, ruleset) : [];
-    } else {
-      if (domain) {
-        const shouldShowTotal =
-          typeof card?._shouldShowTotalEntities === "function"
-            ? card._shouldShowTotalEntities(domain, deviceClass)
-            : false;
-        const showAllEntities = shouldShowTotal ? true : this._showAll;
+  private _getUpdatedEntity(entity: HassEntity): HassEntity {
+    return this.hass?.states[entity.entity_id] || entity;
+  }
 
-        ents = showAllEntities
-          ? card._totalEntities(domain, deviceClass)
-          : card._isOn(domain, deviceClass);
-      } else {
-        ents = Array.isArray(this.entities) ? this.entities : [];
+  private _isEntityActive(entity: HassEntity): boolean {
+    const domain = this.selectedDomain || computeDomain(entity.entity_id);
+    const deviceClass =
+      this.selectedDeviceClass || entity.attributes.device_class;
+    const key = typeKey(domain, deviceClass);
+    const customization =
+      typeof this.card?.getCustomizationForType === "function"
+        ? this.card.getCustomizationForType(key)
+        : undefined;
+    const isInverted = customization?.invert === true;
+
+    if (domain === "climate") {
+      const hvacAction = entity.attributes.hvac_action;
+      if (hvacAction !== undefined) {
+        const active = !["idle", "off"].includes(hvacAction);
+        return isInverted ? !active : active;
       }
     }
-    return ents;
+
+    if (domain === "humidifier") {
+      const humAction = entity.attributes.action;
+      if (humAction !== undefined) {
+        const active = !["idle", "off"].includes(humAction);
+        return isInverted ? !active : active;
+      }
+    }
+
+    const isOn = !STATES_OFF.includes(entity.state);
+    return isInverted ? !isOn : isOn;
+  }
+
+  private _getCurrentEntities(): HassEntity[] {
+    if (!this.hass)
+      return this._showAll ? this._allEntities : this._activeEntities;
+
+    if (this._showAll) {
+      return this._allEntities.map((e) => this._getUpdatedEntity(e));
+    }
+
+    if (this.selectedGroup !== undefined) {
+      return this._activeEntities.map((e) => this._getUpdatedEntity(e));
+    }
+
+    const updatedAll = this._allEntities.map((e) => this._getUpdatedEntity(e));
+    return updatedAll.filter((e) => this._isEntityActive(e));
   }
 
   private toggleAllOrOn(): void {
@@ -346,10 +402,17 @@ export class StatusCardPopup extends LitElement {
     }
   );
 
-  private handleAskToggleDomain(e: MouseEvent) {
-    e.stopPropagation();
+  private _handleMenuAction(e: CustomEvent) {
+    const action = (e.detail.item as any).action;
+    if (action === "toggle_domain") {
+        this.handleAskToggleDomain();
+    } else if (action === "toggle_all") {
+        this.handleAskToggleAll();
+    }
+  }
 
-    const dialogTag = "status-card-plus-popup-confirmation";
+  private handleAskToggleDomain() {
+    const dialogTag = "status-card-popup-confirmation";
     this.dispatchEvent(
       new CustomEvent("show-dialog", {
         detail: {
@@ -368,8 +431,7 @@ export class StatusCardPopup extends LitElement {
     );
   }
 
-  private handleAskToggleAll(e: MouseEvent) {
-    e.stopPropagation();
+  private handleAskToggleAll() {
     this.toggleAllOrOn();
   }
 
@@ -378,17 +440,13 @@ export class StatusCardPopup extends LitElement {
   }
 
   private getAreaForEntity(entity: HassEntity): string {
-    const entry = this.card.entities?.find(
-      (e: any) => e.entity_id === entity.entity_id
-    );
+    const entry = this.hass?.entities[entity.entity_id];
     if (entry) {
       if (entry.area_id) {
         return entry.area_id;
       }
       if (entry.device_id) {
-        const device = this.card.devices?.find(
-          (d: any) => d.id === entry.device_id
-        );
+        const device = this.hass?.devices[entry.device_id];
         if (device && device.area_id) {
           return device.area_id;
         }
@@ -401,16 +459,15 @@ export class StatusCardPopup extends LitElement {
     return !STATES_OFF.includes(e.state);
   }
 
-  private _popupCardConfigCache = new Map<
-    string,
-    { hash: string; config: any }
-  >();
-  private _cardElementCache = new Map<
-    string,
-    { hash: string; el: HTMLElement }
-  >();
+  private _popupCardConfigCache = new Map<string, PopupCardConfigCache>();
+  private _cardElementCache = new Map<string, CardElementCache>();
   private _sortEntitiesMemo = memoizeOne(
-    (entities: HassEntity[], mode: string, locale: string, hassStates: any) => {
+    (
+      entities: HassEntity[],
+      mode: string,
+      locale: string,
+      hassStates: HomeAssistant["states"]
+    ) => {
       const arr = entities.slice();
       if (mode === "state") {
         const cmp = compareByFriendlyName(hassStates, locale);
@@ -435,12 +492,21 @@ export class StatusCardPopup extends LitElement {
       return arr.sort((a, b) => cmp(a.entity_id, b.entity_id));
     }
   );
-  private _configHash(obj: any): string {
+  private _configHash(obj: unknown): string {
     return JSON.stringify(obj);
   }
 
+  private _getGroupCustomization() {
+    if (this.selectedGroup !== undefined && this.card._config.content?.[this.selectedGroup]) {
+      const groupId = this.card._config.content[this.selectedGroup];
+      return this.card.getCustomizationForType(groupId);
+    }
+    return undefined;
+  }
+
   private sortEntitiesForPopup(entities: HassEntity[]): HassEntity[] {
-    const mode = (this.card as any)?._config?.popup_sort || "name";
+    const customization = this._getGroupCustomization();
+    const mode = customization?.popup_sort || this.card._config?.popup_sort || "name";
     return this._sortEntitiesMemo(
       entities,
       mode,
@@ -481,41 +547,29 @@ export class StatusCardPopup extends LitElement {
   );
 
   protected render() {
-    if (!this.open) return html``;
+    if (!this.hass) return html``;
 
-    const columns = (this.card as any)?.list_mode
-      ? 1
-      : (this.card as any)?._config?.columns || 4;
+    const customization = this._getGroupCustomization();
+    const isListMode = customization?.list_mode ?? this.card.list_mode;
+    const columnsConfig = customization?.columns ?? this.card._config.columns ?? 4;
+    const columns = isListMode ? 1 : columnsConfig;
+    
     const domain = this.selectedDomain!;
     const deviceClass = this.selectedDeviceClass;
     const group = this.selectedGroup;
-    const card = this.card as any;
-    const shouldShowTotal =
-      typeof card?._shouldShowTotalEntities === "function"
-        ? card._shouldShowTotalEntities(domain, deviceClass)
-        : false;
-    const showAllEntities = shouldShowTotal ? true : this._showAll;
-    const areaMap = new Map<string, string>(
-      card.areas?.map((a: any) => [a.area_id, a.name])
-    );
+    const card = this.card;
+    const areaMap = new Map<string, string>();
 
-    let ents: HassEntity[] = [];
+    const hassAreas = this.hass?.areas ?? [];
+    const arr = Array.isArray(hassAreas) ? hassAreas : Object.values(hassAreas);
+    for (const a of arr) {
+      if (a && a.area_id && a.name) areaMap.set(a.area_id, a.name);
+    }
+
+    let ents: HassEntity[] = this._entities;
     let isNoGroup = false;
 
-    if (group !== undefined && card._config?.content?.[group]) {
-      const groupId = card._config.content[group];
-      const ruleset = card._config.rulesets?.find(
-        (g: any) => g.group_id === groupId
-      );
-      ents = ruleset ? filterEntitiesByRuleset(card, ruleset) : [];
-    } else {
-      if (domain) {
-        ents = showAllEntities
-          ? card._totalEntities(domain, deviceClass)
-          : card._isOn(domain, deviceClass);
-      } else {
-        ents = Array.isArray(this.entities) ? this.entities : [];
-      }
+    if (group === undefined && domain) {
       isNoGroup = true;
     }
 
@@ -533,6 +587,7 @@ export class StatusCardPopup extends LitElement {
     );
 
     const ungroupAreas =
+      customization?.ungroup_areas === true ||
       card?._config?.ungroupAreas === true ||
       card?._config?.ungroup_areas === true ||
       (card?._config?.area_grouping !== undefined &&
@@ -544,109 +599,104 @@ export class StatusCardPopup extends LitElement {
     const displayColumns = !ungroupAreas
       ? Math.min(columns, Math.max(1, maxCardsPerArea))
       : Math.min(columns, Math.max(1, ents.length));
+    this.style.setProperty("--columns", String(displayColumns));
 
     const key = typeKey(domain, deviceClass);
-    const customization =
+    const domainCustomization =
       typeof card?.getCustomizationForType === "function"
         ? card.getCustomizationForType(key)
         : undefined;
-    const isInverted = customization?.invert === true;
+    const isInverted = domainCustomization?.invert === true;
 
     return html`
-      <ha-dialog
+      <ha-adaptive-dialog
+        .hass=${this.hass}
         .open=${this.open}
-        hideActions
-        @closed=${this._onClosed}
-        style="--columns: ${displayColumns};"
+        @closed=${this._onDialogClosed}
+        flexcontent
       >
-        <div class="dialog-header">
-          <ha-icon-button
-            slot="trigger"
-            .label=${this.hass!.localize("ui.common.close")}
-            .path=${mdiClose}
-            @click=${this._onClosed}
-          ></ha-icon-button>
-          <h3>
-            ${(() => {
-              const group = this.selectedGroup;
-              const card: any = this.card;
-              if (group !== undefined && card?._config?.content?.[group]) {
-                const groupId = card._config.content[group];
-                return (
+        <ha-icon-button
+          slot="headerNavigationIcon"
+          .path=${mdiClose}
+          @click=${this._close}
+          .label=${this.hass!.localize("ui.common.close")}
+        ></ha-icon-button>
+        <span slot="headerTitle">
+          ${(() => {
+            const group = this.selectedGroup;
+            const card = this.card;
+            if (group !== undefined && card._config?.content?.[group]) {
+              const groupId = card._config.content[group];
+              return (
+                this.hass!.localize(
+                  "ui.panel.lovelace.editor.card.entities.name"
+                ) +
+                " in " +
+                groupId
+              );
+            }
+            return this.selectedDomain && this.selectedDeviceClass
+              ? this.computeLabel(
+                  { name: "header" },
+                  this.selectedDomain,
+                  this.selectedDeviceClass
+                )
+              : this.computeLabel(
+                  { name: "header" },
+                  this.selectedDomain || undefined
+                );
+          })()}
+        </span>
+
+        ${isNoGroup
+          ? html`
+              <ha-dropdown
+                slot="headerActionItems"
+                placement="bottom-end"
+                @wa-select=${this._handleMenuAction}
+                @closed=${(e: Event) => e.stopPropagation()}
+              >
+                <ha-icon-button
+                  slot="trigger"
+                  .label=${this.hass!.localize("ui.common.menu")}
+                  .path=${mdiDotsVertical}
+                ></ha-icon-button>
+
+                <ha-dropdown-item
+                  graphic="icon"
+                  .action=${"toggle_domain"}
+                >
+                  <ha-svg-icon
+                    slot="icon"
+                    .path=${mdiToggleSwitchOffOutline}
+                  ></ha-svg-icon>
+                  ${isInverted
+                    ? this.hass!.localize("ui.card.common.turn_on")
+                    : this.hass!.localize("ui.card.common.turn_off")}
+                </ha-dropdown-item>
+
+                <ha-dropdown-item
+                  graphic="icon"
+                  .action=${"toggle_all"}
+                >
+                  <ha-svg-icon
+                    slot="icon"
+                    .path=${mdiSwapHorizontal}
+                  ></ha-svg-icon>
+                  ${this.hass!.localize("ui.card.common.toggle") +
+                  " " +
+                  this.hass!.localize(
+                    "component.sensor.entity_component._.state_attributes.state_class.state.total"
+                  ) +
+                  " " +
                   this.hass!.localize(
                     "ui.panel.lovelace.editor.card.entities.name"
-                  ) +
-                  " in " +
-                  groupId
-                );
-              }
-              return this.selectedDomain && this.selectedDeviceClass
-                ? this.computeLabel(
-                    { name: "header" },
-                    this.selectedDomain,
-                    this.selectedDeviceClass
-                  )
-                : this.computeLabel(
-                    { name: "header" },
-                    this.selectedDomain || undefined
-                  );
-            })()}
-          </h3>
-
-          ${isNoGroup
-            ? html`
-                <ha-button-menu
-                  class="menu-button"
-                  slot="actionItems"
-                  fixed
-                  corner="BOTTOM_END"
-                  menu-corner="END"
-                  @closed=${this._stopPropagation}
-                >
-                  <ha-icon-button
-                    slot="trigger"
-                    .label=${this.hass!.localize("ui.common.menu")}
-                    .path=${mdiDotsVertical}
-                  ></ha-icon-button>
-
-                  <ha-list-item
-                    graphic="icon"
-                    @click=${this.handleAskToggleDomain}
-                    @closed=${this._stopPropagation}
-                  >
-                    ${isInverted
-                      ? this.hass!.localize("ui.card.common.turn_on")
-                      : this.hass!.localize("ui.card.common.turn_off")}
-                    <ha-svg-icon
-                      slot="graphic"
-                      .path=${mdiToggleSwitchOffOutline}
-                    ></ha-svg-icon>
-                  </ha-list-item>
-
-                  <ha-list-item
-                    graphic="icon"
-                    @click=${this.handleAskToggleAll}
-                    @closed=${this._stopPropagation}
-                  >
-                    ${this.hass!.localize("ui.card.common.toggle") +
-                    " " +
-                    this.hass!.localize(
-                      "component.sensor.entity_component._.state_attributes.state_class.state.total"
-                    ) +
-                    " " +
-                    this.hass!.localize(
-                      "ui.panel.lovelace.editor.card.entities.name"
-                    )}
-                    <ha-svg-icon
-                      slot="graphic"
-                      .path=${mdiSwapHorizontal}
-                    ></ha-svg-icon>
-                  </ha-list-item>
-                </ha-button-menu>
-              `
-            : ""}
-        </div>
-        <div class="dialog-content scrollable">
+                  )}
+                </ha-dropdown-item>
+              </ha-dropdown>
+            `
+          : ""}
+        <div class="dialog-content scrollable ha-scrollbar" @hass-more-info=${this._handleMoreInfo}>
           ${this.card?.list_mode
             ? !ungroupAreas
               ? html`
@@ -710,6 +760,7 @@ export class StatusCardPopup extends LitElement {
                 `;
               })}`
             : html`
+                <h4></h4>
                 <div class="entity-cards">
                   ${repeat(
                     flatSorted,
@@ -724,166 +775,25 @@ export class StatusCardPopup extends LitElement {
               `}
           ${ents.length === 0 ? this.content : ""}
         </div>
-      </ha-dialog>
+      </ha-adaptive-dialog>
     `;
   }
-
-  private DOMAIN_FEATURES: Record<string, any> = {
-    alarm_control_panel: {
-      state_content: ["state", "last_changed"],
-      features: [
-        {
-          type: "alarm-modes",
-          modes: [
-            "armed_home",
-            "armed_away",
-            "armed_night",
-            "armed_vacation",
-            "armed_custom_bypass",
-            "disarmed",
-          ],
-        },
-      ],
-    },
-    light: {
-      state_content: ["state", "brightness", "last_changed"],
-      features: [{ type: "light-brightness" }],
-    },
-    cover: {
-      state_content: ["state", "position", "last_changed"],
-      features: [{ type: "cover-open-close" }, { type: "cover-position" }],
-    },
-    vacuum: {
-      state_content: ["state", "last_changed"],
-      features: [
-        {
-          type: "vacuum-commands",
-          commands: [
-            "start_pause",
-            "stop",
-            "clean_spot",
-            "locate",
-            "return_home",
-          ],
-        },
-      ],
-    },
-    climate: {
-      state_content: ["state", "current_temperature", "last_changed"],
-      features: [
-        {
-          type: "climate-hvac-modes",
-          hvac_modes: [
-            "auto",
-            "heat_cool",
-            "heat",
-            "cool",
-            "dry",
-            "fan_only",
-            "off",
-          ],
-        },
-      ],
-    },
-    water_heater: {
-      state_content: ["state", "last_changed"],
-      features: [
-        {
-          type: "water-heater-operation-modes",
-          operation_modes: [
-            "electric",
-            "gas",
-            "heat_pump",
-            "eco",
-            "performance",
-            "high_demand",
-            "off",
-          ],
-        },
-      ],
-    },
-    humidifier: {
-      state_content: ["state", "current_humidity", "last_changed"],
-      features: [{ type: "target-humidity" }],
-    },
-    media_player: {
-      show_entity_picture: true,
-      state_content: ["state", "volume_level", "last_changed"],
-      features: [{ type: "media-player-playback" }],
-    },
-    lock: {
-      state_content: ["state", "last_changed"],
-      features: [{ type: "lock-commands" }],
-    },
-    fan: {
-      state_content: ["state", "percentage", "last_changed"],
-      features: [{ type: "fan-speed" }],
-    },
-    counter: {
-      state_content: ["state", "last_changed"],
-      features: [
-        {
-          type: "counter-actions",
-          actions: ["increment", "decrement", "reset"],
-        },
-      ],
-    },
-    lawn_mower: {
-      state_content: ["state", "last_changed"],
-      features: [
-        {
-          type: "lawn-mower-commands",
-          commands: ["start_pause", "dock"],
-        },
-      ],
-    },
-    update: {
-      state_content: ["state", "latest_version", "last_changed"],
-      features: [{ type: "update-actions", backup: "ask" }],
-    },
-    switch: {
-      state_content: ["state", "last_changed"],
-      features: [{ type: "toggle" }],
-    },
-    input_boolean: {
-      state_content: ["state", "last_changed"],
-      features: [{ type: "toggle" }],
-    },
-    calendar: {
-      state_content: "message",
-    },
-    timer: {
-      state_content: ["state", "remaining_time"],
-    },
-    binary_sensor: {
-      state_content: ["state", "last_changed"],
-    },
-    device_tracker: {
-      state_content: ["state", "last_changed"],
-    },
-    remote: {
-      state_content: ["state", "last_changed"],
-    },
-    valve: {
-      state_content: ["state", "last_changed"],
-      features: [{ type: "valve-open-close" }],
-    },
-  };
 
   static styles = css`
     :host {
       display: block;
+      --responsive-columns: var(--columns, 4);
     }
     :host([hidden]) {
       display: none;
     }
 
-    ha-dialog {
+    ha-adaptive-dialog {
       --dialog-content-padding: 12px;
-      --mdc-dialog-min-width: calc((var(--columns, 4) * 22.5vw) + 3vw);
-      --mdc-dialog-max-width: calc((var(--columns, 4) * 22.5vw) + 5vw);
-      box-sizing: border-box;
-      overflow-x: auto;
+      --ha-dialog-max-width: 96vw !important;
+      --ha-dialog-width-md: calc((var(--responsive-columns) * 22.5vw) + 3vw) !important;
+      --ha-bottom-sheet-height: calc(100dvh - max(var(--safe-area-inset-top), 48px)) !important;
+      --ha-bottom-sheet-max-height: var(--ha-bottom-sheet-height) !important;
     }
 
     .dialog-header {
@@ -891,14 +801,16 @@ export class StatusCardPopup extends LitElement {
       justify-content: flex-start;
       align-items: center;
       gap: 8px;
-      margin-bottom: 12px;
       min-width: 15vw;
       position: sticky;
       top: 0;
       z-index: 10;
-      padding-bottom: 8px;
       border-bottom: 1px solid rgba(0, 0, 0, 0.07);
       background: transparent;
+    }
+    .dialog-header h3 {
+      flex-grow: 1;
+      margin: 0;
     }
     .dialog-header .menu-button {
       margin-left: auto;
@@ -935,83 +847,100 @@ export class StatusCardPopup extends LitElement {
       margin: 0.2em 0;
     }
     h4 {
-      width: calc(var(--columns, 4) * 22.5vw);
+      width: 100%;
+      padding-left: 1.5em;
       box-sizing: border-box;
       font-size: 1.2em;
-      margin: 0.8em 0.2em 0em;
+      margin: 0.6em 0;
     }
     .entity-cards {
       display: grid;
-      grid-template-columns: repeat(var(--columns, 4), 22.5vw);
-      gap: 4px;
+      grid-template-columns: repeat(var(--responsive-columns), 1fr);
+      gap: 8px;
       width: 100%;
       box-sizing: border-box;
       overflow-x: hidden;
       justify-content: center;
-      margin-top: 0.8em;
+      padding: 8px;
     }
     .entity-card {
-      width: 22.5vw;
+      width: 100%;
+      min-width: 0;
       box-sizing: border-box;
     }
-
     @media (max-width: 1200px) {
-      ha-dialog {
-        --mdc-dialog-min-width: 96vw;
-        --mdc-dialog-max-width: 96vw;
+      :host {
+        --responsive-columns: min(var(--columns, 4), 3);
       }
-      .entity-card {
-        width: 45vw;
-      }
-      .entity-cards {
-        grid-template-columns: repeat(var(--columns, 2), 45vw);
+      ha-adaptive-dialog {
+        --ha-dialog-width-md: calc((var(--responsive-columns) * 44.5vw) + 3vw) !important;
       }
       h4 {
-        width: calc(var(--columns, 2) * 45vw);
-        margin: 0.8em 0.2em;
+        width: 100%;
+        font-size: 1.2em;
+        margin: 0.6em 0;
+        padding: 0 1em;
+        box-sizing: border-box;
       }
     }
 
-    @media (max-width: 700px) {
-      ha-dialog {
+    @media (max-width: 900px) {
+      :host {
+        --responsive-columns: min(var(--columns, 4), 2);
+      }
+      ha-adaptive-dialog {
+        --ha-dialog-width-md: calc((var(--responsive-columns) * 29.5vw) + 3vw) !important;
+      }
+      h4 {
+        width: 100%;
+        font-size: 1.2em;
+        margin: 0.6em 0;
+        padding: 0 1em;
+        box-sizing: border-box;
+      }
+    }
+
+    @media (max-width: 600px) {
+      :host {
+        --responsive-columns: 1;
+      }
+      ha-adaptive-dialog {
         --dialog-content-padding: 8px;
-        --mdc-dialog-min-width: 96vw;
-        --mdc-dialog-max-width: 96vw;
+        --ha-dialog-width-md: 100vw !important;
       }
       .cards-wrapper {
         align-items: stretch;
         width: 100%;
         overflow-x: hidden;
       }
-      .entity-card {
-        width: 92vw;
-      }
       .entity-cards {
         grid-template-columns: 1fr;
+        width: 100%;
       }
       h4 {
         width: 100%;
         font-size: 1.2em;
         margin: 0.6em 0;
-        padding: 0 8px;
+        padding: 0 0.3em;
         box-sizing: border-box;
       }
     }
   `;
 }
 
-customElements.define("status-card-plus-popup", StatusCardPopup);
+
+customElements.define("status-card-popup", StatusCardPopup);
 
 class StatusCardPopupConfirmation extends LitElement {
   @property({ type: Boolean }) public open = false;
   @property({ attribute: false }) public hass?: HomeAssistant;
-  @property({ attribute: false }) public card?: any;
+  @property({ attribute: false }) public card?: StatusCard;
   @property({ type: String }) public selectedDomain?: string;
   @property({ type: String }) public selectedDeviceClass?: string;
 
   public showDialog(params: {
     hass: HomeAssistant;
-    card: any;
+    card: StatusCard;
     selectedDomain?: string;
     selectedDeviceClass?: string;
   }): void {
@@ -1020,10 +949,39 @@ class StatusCardPopupConfirmation extends LitElement {
     this.selectedDomain = params.selectedDomain;
     this.selectedDeviceClass = params.selectedDeviceClass;
     this.open = true;
+    window.history.pushState({ statusCardPopupConfirm: true }, "");
     this.requestUpdate();
   }
 
-  private _onClosed = () => {
+  connectedCallback(): void {
+    super.connectedCallback();
+    window.addEventListener("popstate", this._onPopState);
+  }
+
+  disconnectedCallback(): void {
+    super.disconnectedCallback();
+    window.removeEventListener("popstate", this._onPopState);
+  }
+
+  private _onPopState = () => {
+    if (this.open && !window.history.state?.statusCardPopupConfirm) {
+      this.open = false;
+    }
+  };
+
+  private _close = () => {
+    if (!this.open) return;
+    this.open = false;
+    if (window.history.state?.statusCardPopupConfirm) {
+      window.history.back();
+    }
+  };
+
+  private _onDialogClosed = (ev: Event) => {
+    const target = ev.target as HTMLElement | null;
+    if (target && target.tagName !== 'HA-ADAPTIVE-DIALOG') {
+      return;
+    }
     this.open = false;
     this.dispatchEvent(
       new CustomEvent("dialog-closed", { bubbles: true, composed: true })
@@ -1034,11 +992,11 @@ class StatusCardPopupConfirmation extends LitElement {
     try {
       this.card?.toggleDomain?.(this.selectedDomain, this.selectedDeviceClass);
     } catch (_) {}
-    this._onClosed();
+    this._close();
   };
 
   protected render() {
-    if (!this.open || !this.hass || !this.card) return html``;
+    if (!this.hass || !this.card) return html``;
 
     const domain = this.selectedDomain || "";
     const deviceClass = this.selectedDeviceClass;
@@ -1047,14 +1005,23 @@ class StatusCardPopupConfirmation extends LitElement {
     const isInverted = customization?.invert === true;
 
     return html`
-      <ha-dialog
+      <ha-adaptive-dialog
+        .hass=${this.hass}
         .open=${this.open}
-        heading="${isInverted
-          ? this.hass.localize("ui.card.common.turn_on") + "?"
-          : this.hass.localize("ui.card.common.turn_off") + "?"}"
-        @closed=${this._onClosed}
+        @closed=${this._onDialogClosed}
       >
-        <div>
+        <ha-icon-button
+          slot="headerNavigationIcon"
+          .path=${mdiClose}
+          @click=${this._close}
+          .label=${this.hass.localize("ui.common.close")}
+        ></ha-icon-button>
+        <span slot="headerTitle">
+          ${isInverted
+            ? this.hass.localize("ui.card.common.turn_on") + "?"
+            : this.hass.localize("ui.card.common.turn_off") + "?"}
+        </span>
+        <div class="dialog-content">
           ${this.hass.localize(
             "ui.panel.lovelace.cards.actions.action_confirmation",
             {
@@ -1064,21 +1031,21 @@ class StatusCardPopupConfirmation extends LitElement {
             }
           )}
         </div>
-        <ha-button
-          appearance="plain"
-          slot="secondaryAction"
-          dialogAction="close"
-        >
-          ${this.hass.localize("ui.common.no")}
-        </ha-button>
-        <ha-button
-          appearance="accent"
-          slot="primaryAction"
-          @click=${this._confirm}
-        >
-          ${this.hass.localize("ui.common.yes")}
-        </ha-button>
-      </ha-dialog>
+        <div slot="footer" style="display:flex;justify-content:flex-end;gap:8px;padding:8px 16px 16px;">
+          <ha-button
+            appearance="plain"
+            @click=${this._close}
+          >
+            ${this.hass.localize("ui.common.no")}
+          </ha-button>
+          <ha-button
+            appearance="accent"
+            @click=${this._confirm}
+          >
+            ${this.hass.localize("ui.common.yes")}
+          </ha-button>
+        </div>
+      </ha-adaptive-dialog>
     `;
   }
 
@@ -1086,6 +1053,6 @@ class StatusCardPopupConfirmation extends LitElement {
 }
 
 customElements.define(
-  "status-card-plus-popup-confirmation",
+  "status-card-popup-confirmation",
   StatusCardPopupConfirmation
 );

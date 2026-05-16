@@ -1,7 +1,6 @@
-import { LitElement, html } from "lit";
+import { LitElement, html, css, CSSResult, nothing } from "lit";
 import { customElement, property } from "lit/decorators.js";
 import { repeat } from "lit/directives/repeat.js";
-import { css, CSSResult, nothing } from "lit";
 import { mdiClose, mdiPencil } from "@mdi/js";
 import {
   HomeAssistant,
@@ -50,27 +49,24 @@ abstract class BaseItemsEditor extends LitElement {
           (conf) => this._getKey(conf),
           (conf, index) => html`
             <div class="customize-item">
-              <ha-select
-                label=${this.hass!.localize(
+              <ha-selector
+                .hass=${this.hass}
+                .label=${this.hass!.localize(
                   "ui.panel.lovelace.editor.common.edit"
                 ) +
                 " " +
                 this.hass!.localize(
                   "ui.panel.lovelace.editor.card.markdown.content"
                 )}
-                name="Customize"
-                class="select-customization"
-                naturalMenuWidth
-                fixedMenuPosition
+                .selector=${{
+                  select: {
+                    options: this.SelectOptions,
+                  },
+                }}
                 .value=${conf.type}
-                @closed=${(ev: any) => ev.stopPropagation()}
+                .index=${index}
                 @value-changed=${this._valueChanged}
-              >
-                <mwc-list-item .value=${conf.type} selected disabled>
-                  ${this.SelectOptions.find((o) => o.value === conf.type)
-                    ?.label || conf.type}
-                </mwc-list-item>
-              </ha-select>
+              ></ha-selector>
               <ha-icon-button
                 .label=${this.hass!.localize("ui.common.remove")}
                 .path=${mdiClose}
@@ -90,28 +86,23 @@ abstract class BaseItemsEditor extends LitElement {
         )}
 
         <div class="add-item row">
-          <ha-select
-            label=${this.hass!.localize(
+          <ha-selector
+            .hass=${this.hass}
+            .label=${this.hass!.localize(
               "ui.panel.lovelace.editor.common.edit"
             ) +
             " " +
             this.hass!.localize(
               "ui.panel.lovelace.editor.card.markdown.content"
             )}
-            name="Customize"
-            class="add-customization"
-            naturalMenuWidth
-            fixedMenuPosition
-            @closed=${(ev: any) => ev.stopPropagation()}
-            @click=${this._addRow}
-          >
-            ${availableOptions.map(
-              (option) =>
-                html`<mwc-list-item .value=${option.value}
-                  >${option.label}</mwc-list-item
-                >`
-            )}
-          </ha-select>
+            .selector=${{
+              select: {
+                options: availableOptions,
+              },
+            }}
+            .value=${""}
+            @value-changed=${this._addRow}
+          ></ha-selector>
         </div>
       </div>
     `;
@@ -123,9 +114,16 @@ abstract class BaseItemsEditor extends LitElement {
     }
     const value = ev.detail.value;
     const index = (ev.target as any).index;
+    if (index === undefined) return;
     const newCustomization = this.customizationkey.concat();
     newCustomization[index] = { ...newCustomization[index], type: value || "" };
-    fireEvent(this, "config-changed", newCustomization as any);
+    this.dispatchEvent(
+      new CustomEvent("config-changed", {
+        detail: newCustomization,
+        bubbles: true,
+        composed: true,
+      })
+    );
   }
 
   private _removeRow(ev: Event): void {
@@ -134,7 +132,13 @@ abstract class BaseItemsEditor extends LitElement {
     if (index != undefined) {
       const customization = this.customizationkey!.concat();
       customization.splice(index, 1);
-      fireEvent(this, "config-changed", customization as any);
+      this.dispatchEvent(
+        new CustomEvent("config-changed", {
+          detail: customization,
+          bubbles: true,
+          composed: true,
+        })
+      );
     }
   }
 
@@ -146,24 +150,24 @@ abstract class BaseItemsEditor extends LitElement {
     }
   }
 
-  private _addRow(ev: Event): void {
+  private _addRow(ev: CustomEvent): void {
     ev.stopPropagation();
     if (!this.customizationkey || !this.hass) {
       return;
     }
-    const selectElement = this.shadowRoot!.querySelector(
-      ".add-customization"
-    ) as HTMLElementValue;
-    if (!selectElement || !selectElement.value) {
+    const preset = ev.detail.value;
+    if (!preset) {
       return;
     }
-    const preset = selectElement.value;
     const newItem: LovelaceCardConfig = { type: preset };
-    fireEvent(this, "config-changed", [
-      ...this.customizationkey,
-      newItem,
-    ] as any);
-    selectElement.value = "";
+    this.dispatchEvent(
+      new CustomEvent("config-changed", {
+        detail: [...this.customizationkey, newItem],
+        bubbles: true,
+        composed: true,
+      })
+    );
+    // No need to manually clear value as we don't bind .value to a state that would keep it
   }
 
   static get styles(): CSSResult {
@@ -186,6 +190,10 @@ abstract class BaseItemsEditor extends LitElement {
         --mdc-icon-button-size: 36px;
         color: var(--secondary-text-color);
         padding-left: 4px;
+      }
+      .customize-item ha-selector,
+      .add-item ha-selector {
+        flex: 1;
       }
     `;
   }
