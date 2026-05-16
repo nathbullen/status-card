@@ -1009,6 +1009,7 @@ export class StatusCard extends LitElement {
       groupId,
       undefined,
       this._customizationIndexMemo(this._config.customization),
+      entities.length > 0,
     );
     const background_color = getBackgroundColor(
       this._config,
@@ -1133,6 +1134,7 @@ export class StatusCard extends LitElement {
       domain,
       deviceClass,
       this._customizationIndexMemo(this._config.customization),
+      active.length > 0,
     );
     const customization = this.getCustomizationForType(
       typeKey(domain, deviceClass),

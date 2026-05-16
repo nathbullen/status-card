@@ -423,16 +423,31 @@ export function getCustomColor(
   domain: string,
   deviceClass?: string,
   customizationMap?: Map<string, LovelaceCardConfig>,
+  isActive: boolean = false,
 ): string | undefined {
-  return (
-    getResolvedCustomizationValue(
-      config,
-      "icon_color",
-      domain,
-      deviceClass,
-      customizationMap,
-    ) || config.color
+  const custColor = getResolvedCustomizationValue(
+    config,
+    "icon_color",
+    domain,
+    deviceClass,
+    customizationMap,
   );
+  if (custColor) return custColor;
+
+  const customization = getCustomizationForType(
+    config,
+    typeKey(domain, deviceClass),
+    customizationMap,
+  );
+
+  const activate_state_color =
+    customization?.activate_state_color ?? config.activate_state_color;
+
+  if (isActive && activate_state_color) {
+    return `state-${domain}${deviceClass ? `-${deviceClass}` : ""}-active`;
+  }
+
+  return config.color;
 }
 
 export function getCustomName(
