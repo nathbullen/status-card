@@ -43,7 +43,7 @@ import {
   SmartGroupItem,
 } from "./ha/types";
 
-@customElement("status-card-editor")
+@customElement("status-card-plus-editor")
 export class StatusCardEditor extends LitElement {
   @property({ attribute: false }) public hass!: HomeAssistant;
   @property({ attribute: false }) public lovelace?: unknown;
@@ -794,7 +794,7 @@ export class StatusCardEditor extends LitElement {
           <span slot="title">${localizedType}</span>
         </div>
       </div>
-      <status-card-item-editor
+      <status-card-plus-item-editor
         .hass=${this.hass}
         .lovelace=${this.lovelace}
         .config=${this._config?.customization?.[editor?.index ?? 0] ?? {}}
@@ -803,7 +803,7 @@ export class StatusCardEditor extends LitElement {
         .isGroup=${isGroup}
         @config-changed=${itemChangedHandler}
       >
-      </status-card-item-editor>
+      </status-card-plus-item-editor>
     `;
   }
 

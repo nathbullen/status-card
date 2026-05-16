@@ -348,6 +348,7 @@ export interface ExtraItem {
   color?: string;
   icon_css?: string;
   background_color?: string;
+  stateText?: string;
 }
 
 export type RuleValue =

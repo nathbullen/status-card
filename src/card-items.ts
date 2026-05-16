@@ -85,7 +85,43 @@ export const computeExtraItems = (
 
       const idx: number = content.indexOf(eid);
       const order: number = idx >= 0 ? idx : 0;
-      const icon: string = getCustomIcon(
+
+      let mappedColor: string | undefined = undefined;
+      const rulesC = (cust as any)?.state_color_map;
+      if (Array.isArray(rulesC) && rulesC.length > 0) {
+        for (const rule of rulesC) {
+          const target = rule.attribute === "state"
+            ? entity.state
+            : (entity.attributes as any)?.[rule.attribute];
+          if (target !== undefined && String(target) === String(rule.equals)) {
+            mappedColor = rule.color;
+            break;
+          }
+        }
+      }
+
+      let climateIconColor: string | undefined = undefined;
+      if (eid.startsWith("climate.")) {
+        const hvacAction = (entity?.attributes as any)?.hvac_action;
+        if (hvacAction === "heating") climateIconColor = "var(--state-climate-heat-color)";
+        if (hvacAction === "cooling") climateIconColor = "var(--state-climate-cool-color)";
+      }
+
+      let mappedIcon: string | undefined = undefined;
+      const rulesI = (cust as any)?.state_icon_map;
+      if (Array.isArray(rulesI) && rulesI.length > 0) {
+        for (const rule of rulesI) {
+          const target = rule.attribute === "state"
+            ? entity.state
+            : (entity.attributes as any)?.[rule.attribute];
+          if (target !== undefined && String(target) === String(rule.equals)) {
+            mappedIcon = rule.icon;
+            break;
+          }
+        }
+      }
+
+      const icon: string = mappedIcon || getCustomIcon(
         cfg,
         eid,
         undefined,
@@ -97,6 +133,7 @@ export const computeExtraItems = (
         entity.attributes.friendly_name ??
         eid;
       const color: string | undefined =
+        mappedColor || climateIconColor ||
         getResolvedCustomizationValue(
           cfg,
           "icon_color",

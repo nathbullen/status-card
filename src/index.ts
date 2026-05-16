@@ -10,7 +10,7 @@ console.info(
 
 window.customCards = window.customCards || [];
 window.customCards.push({
-  type: "status-card",
+  type: "status-card-plus",
   name: "Status Card",
   preview: true,
   description:
@@ -19,7 +19,7 @@ window.customCards.push({
 
 window.customBadges = window.customBadges || [];
 window.customBadges.push({
-  type: "status-card",
+  type: "status-card-plus",
   name: "Status Card",
   preview: true,
   description:

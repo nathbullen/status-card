@@ -68,7 +68,7 @@ import {
 import { handleDomainAction, toggleDomain } from "./card-actions";
 import { mdiFormatListGroup } from "@mdi/js";
 
-@customElement("status-card")
+@customElement("status-card-plus")
 export class StatusCard extends LitElement {
   @property({ type: Object }) public _config!: LovelaceCardConfig;
   @state() private entitiesByDomain: { [domain: string]: HassEntity[] } = {};
@@ -559,7 +559,7 @@ export class StatusCard extends LitElement {
           )
         : false;
 
-    const dialogTag = "status-card-popup";
+    const dialogTag = "status-card-plus-popup";
     this._showPopup(this, dialogTag, {
       title,
       hass: this.hass,
@@ -837,6 +837,28 @@ export class StatusCard extends LitElement {
     return getIconStyles(type, options);
   }
 
+  private _computeStateText(stateObj: HassEntity, customization: any): string {
+    const contentDef = customization?.state_content;
+    if (contentDef !== undefined) {
+      const parts = (Array.isArray(contentDef) ? contentDef : [contentDef])
+        .map((token) => {
+          if (!token) return "";
+          const str = String(token).trim();
+          if (str === "state") {
+            return this.hass.formatEntityState(stateObj);
+          }
+          const attr = str.startsWith("attribute:") ? str.slice(10) : str;
+          if (attr && stateObj.attributes && attr in stateObj.attributes) {
+            return this.hass.formatEntityAttributeValue(stateObj, attr);
+          }
+          return str;
+        })
+        .filter((p) => p !== "");
+      return parts.join(" · ");
+    }
+    return this.hass.formatEntityState(stateObj);
+  }
+
   private renderExtraTab(item: ExtraItem): TemplateResult {
     const { panel, icon, name, color, icon_css, background_color } = item;
     const stateObj = this.hass.states[panel];
@@ -946,12 +968,7 @@ export class StatusCard extends LitElement {
                   class="entity-state"
                   style=${styleMap(this._parsedGlobalStateCss)}
                 >
-                  <state-display
-                    .stateObj=${stateObj}
-                    .hass=${this.hass}
-                    .content=${stateContent}
-                    .name=${name}
-                  ></state-display>
+                  ${this._computeStateText(stateObj, customization)}
                 </div>
               </div>`
             : ""}
@@ -1430,7 +1447,7 @@ export class StatusCard extends LitElement {
   }
 
   static getConfigElement() {
-    return document.createElement("status-card-editor");
+    return document.createElement("status-card-plus-editor");
   }
 
   static getStubConfig() {

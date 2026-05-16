@@ -8,7 +8,7 @@ import {
   getItemStyleSchema,
 } from "./editor-schema";
 
-@customElement("status-card-item-editor")
+@customElement("status-card-plus-item-editor")
 export class ItemEditor extends LitElement {
   @property({ attribute: false }) config?: LovelaceCardConfig;
   @property({ attribute: false }) hass?: HomeAssistant;

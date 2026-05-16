@@ -412,7 +412,7 @@ export class StatusCardPopup extends LitElement {
   }
 
   private handleAskToggleDomain() {
-    const dialogTag = "status-card-popup-confirmation";
+    const dialogTag = "status-card-plus-popup-confirmation";
     this.dispatchEvent(
       new CustomEvent("show-dialog", {
         detail: {
@@ -929,7 +929,7 @@ export class StatusCardPopup extends LitElement {
 }
 
 
-customElements.define("status-card-popup", StatusCardPopup);
+customElements.define("status-card-plus-popup", StatusCardPopup);
 
 class StatusCardPopupConfirmation extends LitElement {
   @property({ type: Boolean }) public open = false;
@@ -1053,6 +1053,6 @@ class StatusCardPopupConfirmation extends LitElement {
 }
 
 customElements.define(
-  "status-card-popup-confirmation",
+  "status-card-plus-popup-confirmation",
   StatusCardPopupConfirmation
 );

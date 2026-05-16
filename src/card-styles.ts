@@ -230,13 +230,24 @@ export const cardStyles = css`
   .entity-info {
     text-align: center;
     margin-top: 7px;
+    min-height: 2.5em;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
   }
   .entity-name {
-    font-weight: bold;
+    font-size: var(--ha-font-size-m);
+    font-weight: var(--ha-font-weight-medium);
+    line-height: var(--ha-line-height-normal);
+    letter-spacing: 0.1px;
+    color: var(--primary-text-color);
   }
   .entity-state {
-    color: var(--secondary-text-color);
-    font-size: 0.9em;
+    font-size: calc(var(--ha-font-size-s) * 0.9);
+    font-weight: var(--ha-font-weight-normal);
+    line-height: var(--ha-line-height-condensed);
+    letter-spacing: 0.2px;
+    color: var(--primary-text-color);
   }
   @keyframes spin {
     from {
@@ -543,17 +554,19 @@ export function getIconStyles(
   } = {},
 ) {
   const { color, background_color, square, isNotHome } = options;
+  const resolvedColor = color
+    ? color.startsWith("rgb") ||
+      color.startsWith("#") ||
+      color.startsWith("hsl") ||
+      color.startsWith("var")
+      ? color
+      : `var(--${color}-color)`
+    : undefined;
+
   const base: Record<string, string | undefined> = {
     "border-radius": square ? "20%" : "50%",
-    "background-color": background_color,
-    color: color
-      ? color.startsWith("rgb") ||
-        color.startsWith("#") ||
-        color.startsWith("hsl") ||
-        color.startsWith("var")
-        ? color
-        : `var(--${color}-color)`
-      : undefined,
+    "background-color": background_color || (resolvedColor ? `color-mix(in srgb, ${resolvedColor} 18%, transparent)` : undefined),
+    color: resolvedColor,
   };
 
   if (type === "person" && isNotHome) {
