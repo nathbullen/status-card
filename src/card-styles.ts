@@ -392,7 +392,7 @@ export function getBackgroundColor(
   domain: string,
   deviceClass?: string,
   customizationMap?: Map<string, LovelaceCardConfig>,
-): string {
+): string | undefined {
   const customization = getCustomizationForType(
     config,
     typeKey(domain, deviceClass),
@@ -415,7 +415,7 @@ export function getBackgroundColor(
     if (arr.length >= 3) return toColor(arr);
   }
 
-  return "rgba(var(--rgb-primary-text-color), 0.15)";
+  return undefined;
 }
 
 export function getCustomColor(
@@ -565,7 +565,7 @@ export function getIconStyles(
 
   const base: Record<string, string | undefined> = {
     "border-radius": square ? "20%" : "50%",
-    "background-color": background_color || (resolvedColor ? `color-mix(in srgb, ${resolvedColor} 18%, transparent)` : undefined),
+    "background-color": background_color || (resolvedColor ? `color-mix(in srgb, ${resolvedColor} 18%, transparent)` : "rgba(var(--rgb-primary-text-color), 0.15)"),
     color: resolvedColor,
   };
 

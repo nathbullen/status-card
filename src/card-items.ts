@@ -151,7 +151,7 @@ export const computeExtraItems = (
         undefined,
         customizationMap
       );
-      const background_color: string = getBackgroundColor(
+      const background_color: string | undefined = getBackgroundColor(
         cfg,
         eid,
         undefined,

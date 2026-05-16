@@ -2792,7 +2792,6 @@ function re(e, t, i, s) {
     const a = e.background_color;
     if (a.length >= 3) return n(a);
   }
-  return "rgba(var(--rgb-primary-text-color), 0.15)";
 }
 function $1(e, t, i, s) {
   return Mt(
@@ -2859,7 +2858,7 @@ function ne(e, t, i, s, o, n, a, c) {
 function Wo(e, t = {}) {
   const { color: i, background_color: s, square: o, isNotHome: n } = t, a = i ? i.startsWith("rgb") || i.startsWith("#") || i.startsWith("hsl") || i.startsWith("var") ? i : `var(--${i}-color)` : void 0, c = {
     "border-radius": o ? "20%" : "50%",
-    "background-color": s || (a ? `color-mix(in srgb, ${a} 18%, transparent)` : void 0),
+    "background-color": s || (a ? `color-mix(in srgb, ${a} 18%, transparent)` : "rgba(var(--rgb-primary-text-color), 0.15)"),
     color: a
   };
   return e === "person" && n && (c.filter = "grayscale(100%)"), c;
